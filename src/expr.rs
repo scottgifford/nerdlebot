@@ -29,21 +29,11 @@ enum ExpressionCalculateState {
     ExpectNumber,
 }
 
-impl Expression {
-    // TODO: Use formatter instead or something
-    pub fn to_string(&self) -> String {
-        let mut s = String::new();
-        for part in &self.parts {
-            s.push_str(&part.to_string());
-            s.push_str(" ");
-        }
-        if s.len() > 0 {
-            // Get rid of the extra trailing space we added
-            s.truncate(s.len()-1);
-        }
-        return s;
-    }
+pub struct Expression {
+    parts: Vec<ExpressionPart>,
+}
 
+impl Expression {
     pub fn calculate(&self) -> Result<ExpressionNumber, InvalidExpressionError> {
         // TODO: Does not correctly implement order of expressions
         let mut state = ExpressionCalculateState::ExpectNumber;
@@ -154,8 +144,25 @@ impl Expression {
     }
 }
 
-pub struct Expression {
-    parts: Vec<ExpressionPart>,
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut is_first = true;
+        for part in &self.parts {
+            if is_first {
+                is_first = false;
+            } else {
+                match write!(f, " ") {
+                    Err(err) => return Err(err),
+                    Ok(()) => { }
+                }
+            }
+            match write!(f, "{}", &part.to_string()) {
+                Err(err) => return Err(err),
+                Ok(()) => { }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
