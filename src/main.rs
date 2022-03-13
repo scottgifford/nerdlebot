@@ -128,16 +128,14 @@ pub struct ExpressionOperatorPlus {
 
 impl ToString for ExpressionOperatorPlus {
     fn to_string(&self) -> String {
-        // TODO: Why is this return needed?
-        return "+".to_string();
+        return "+".to_string()
     }
 }
 
 impl ExpressionOperator for ExpressionOperatorPlus {
 
     fn len(&self) -> usize {
-        // TODO: Why is this return needed?
-        return 1;
+        1
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
@@ -153,15 +151,13 @@ pub struct ExpressionOperatorMinus {
 
 impl ToString for ExpressionOperatorMinus {
     fn to_string(&self) -> String {
-        // TODO: Why is this return needed?
-        return "-".to_string();
+        "-".to_string()
     }
 }
 
 impl ExpressionOperator for ExpressionOperatorMinus {
     fn len(&self) -> usize {
-        // TODO: Why is this return needed?
-        return 1;
+        1
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
@@ -177,15 +173,13 @@ pub struct ExpressionOperatorTimes {
 
 impl ToString for ExpressionOperatorTimes {
     fn to_string(&self) -> String {
-        // TODO: Why is this return needed?
-        return "*".to_string();
+        "*".to_string()
     }
 }
 impl ExpressionOperator for ExpressionOperatorTimes {
 
     fn len(&self) -> usize {
-        // TODO: Why is this return needed?
-        return 1;
+        1
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
@@ -201,14 +195,12 @@ pub struct ExpressionOperatorDivide {
 
 impl ToString for ExpressionOperatorDivide {
     fn to_string(&self) -> String {
-        // TODO: Why is this return needed?
-        return "/".to_string();
+        "/".to_string()
     }
 }
 
 impl ExpressionOperator for ExpressionOperatorDivide {
     fn len(&self) -> usize {
-        // TODO: Why is this return needed?
         return 1;
     }
 
