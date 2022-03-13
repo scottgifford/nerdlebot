@@ -151,15 +151,9 @@ impl fmt::Display for Expression {
             if is_first {
                 is_first = false;
             } else {
-                match write!(f, " ") {
-                    Err(err) => return Err(err),
-                    Ok(()) => { }
-                }
+                write!(f, " ")?
             }
-            match write!(f, "{}", &part.to_string()) {
-                Err(err) => return Err(err),
-                Ok(()) => { }
-            }
+            write!(f, "{}", &part.to_string())?
         }
         Ok(())
     }
