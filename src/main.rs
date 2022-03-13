@@ -1,4 +1,16 @@
 use std::io;
+use std::fmt;
+
+pub struct InvalidExpressionError {
+    message: String,
+}
+
+impl fmt::Display for InvalidExpressionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "InvalidExpressionError: {}", self.message)
+    }
+}
+
 
 pub struct Equation {
     expr: Expression,
@@ -16,33 +28,36 @@ impl Expression {
         return s;
     }
 
-    fn calculate(&self) -> ExpressionNumber {
+    fn calculate(&self) -> Result<ExpressionNumber, InvalidExpressionError> {
         // TODO: Does not correctly implement order of expressions
-        // TODO: Or operators yet!!  Currently just returns last number
         let mut state = 0; // 0=expect num, 1=expect op; TODO: Use enum?
-        // TODO: This doesn't seem right
-        let mut cur = ExpressionNumber {
-            value: 0,
-        };
-        let op1: Box<dyn ExpressionPart> = Box::new(ExpressionNumber {
-            value: 0,
-        });
-        let mut op: &Box<dyn ExpressionPart> = &op1;
+
+        let mut cur: Option<ExpressionNumber> = None;
+        let mut op: Option<&Box<dyn ExpressionPart>> = None;
 
         for part in &self.parts {
             if state == 0 {
-                cur = part.as_expression_number().clone();
+                cur = Some(part.as_expression_number().clone());
                 state = 1;
             } else if state == 1 {
-                op = part;
+                op = Some(part);
                 state = 2;
             } else if state == 2 {
-                cur = op.operate(cur.as_expression_number(), part.as_expression_number());
+                match op {
+                    Some(op2) => match cur {
+                        Some(cur2) => cur = Some(op2.operate(cur2.as_expression_number(), part.as_expression_number())),
+                        None => return Err(InvalidExpressionError { message: String::from("Operator missing first operand") }),
+                    }
+                    None => return Err(InvalidExpressionError { message: String::from("Expected operator") }),
+                }
                 state = 1;
             }
         }
 
-        return cur;
+        match cur {
+            Some(ret) => return Ok(ret),
+            None => return Err(InvalidExpressionError { message: String::from("No values found") }),
+        }
     }
 }
 
@@ -217,7 +232,7 @@ impl ExpressionPart for ExpressionOperatorDivide {
 
 
 // TODO: Make a constructor method?
-fn parse_expression(input: &str) -> Expression {
+fn parse_expression(input: &str) -> Result<Expression,InvalidExpressionError> {
     let mut parts: Vec<Box<dyn ExpressionPart>> = Vec::new();
     let mut in_num: bool = false;
     let mut accum: u32 = 0;
@@ -250,15 +265,14 @@ fn parse_expression(input: &str) -> Expression {
                 parts.push(Box::new(ExpressionOperatorDivide {
                 }));
             } else {
-                // TODO: Idiomatic error handling
-                panic!("Cannot parse unrecognized character {}", item);
+                return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character {}", item) });
             }
         }
     }
 
-    return Expression {
+    return Ok(Expression {
         parts: parts,
-    };
+    });
 }
 
 fn main() {
@@ -271,8 +285,14 @@ fn main() {
 
     println!("You inputed: {}", input);
 
-    let ex = parse_expression(&input);
+    let ex = match parse_expression(&input) {
+        Ok(ex2) => ex2,
+        Err(err) => panic!("{}", err),
+    };
     println!("Expression: {}", ex.to_string());
-    println!("Calculation: {}", ex.calculate().to_string());
-
+    let res = match ex.calculate() {
+        Ok(res2) => res2,
+        Err(err) => panic!("{}", err),
+    };
+    println!("Calculation: {}", res.to_string());
 }
