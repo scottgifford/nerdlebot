@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct InvalidExpressionError {
@@ -329,41 +330,44 @@ impl ExpressionOperator for ExpressionOperatorDivide {
     }
 }
 
-// TODO: Make a constructor method?
-pub fn parse_expression(input: &str) -> Result<Expression,InvalidExpressionError> {
-    let mut parts: Vec<ExpressionPart> = Vec::new();
-    let mut in_num: bool = false;
-    let mut accum: u32 = 0;
+impl FromStr for Expression {
+    type Err = InvalidExpressionError;
 
-    for (_i, &item) in input.as_bytes().iter().enumerate() {
-        match item {
-            b'0'..=b'9' => {
-                in_num = true;
-                accum *= 10;
-                accum += (item - b'0') as u32;    
-            },
-            _ => {
-                if in_num {
-                    parts.push(ExpressionPart::Number(ExpressionNumber {
-                        value: accum,
-                    }));
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut parts: Vec<ExpressionPart> = Vec::new();
+        let mut in_num: bool = false;
+        let mut accum: u32 = 0;
+
+        for (_i, &item) in input.as_bytes().iter().enumerate() {
+            match item {
+                b'0'..=b'9' => {
+                    in_num = true;
+                    accum *= 10;
+                    accum += (item - b'0') as u32;    
+                },
+                _ => {
+                    if in_num {
+                        parts.push(ExpressionPart::Number(ExpressionNumber {
+                            value: accum,
+                        }));
+                    }
+                    accum = 0;
+                    in_num = false;
+                    match item {
+                        b' ' | b'\n' | b'\r' => { } // No-op (but already ended number)
+                        b'+' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorPlus { }))),
+                        b'-' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorMinus { }))),
+                        b'*' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorTimes { }))),
+                        b'/' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorDivide { }))),
+                        _ =>  return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character '{}'", item as char) }),
+                    }
                 }
-                accum = 0;
-                in_num = false;
-                match item {
-                    b' ' | b'\n' | b'\r' => { } // No-op (but already ended number)
-                    b'+' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorPlus { }))),
-                    b'-' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorMinus { }))),
-                    b'*' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorTimes { }))),
-                    b'/' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorDivide { }))),
-                    _ =>  return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character '{}'", item as char) }),
-                }
+
             }
-
         }
-    }
 
-    return Ok(Expression {
-        parts: parts,
-    });
+        Ok(Expression {
+            parts: parts,
+        })
+    }
 }

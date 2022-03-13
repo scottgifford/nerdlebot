@@ -1,7 +1,8 @@
 use std::io;
+use std::str::FromStr;
 
 mod expr;
-use crate::expr::parse_expression;
+use crate::expr::Expression;
 
 fn main() {
     println!("Enter an Expression to parse");
@@ -13,7 +14,7 @@ fn main() {
 
     println!("You inputed: {}", input);
 
-    let ex = parse_expression(&input)
+    let ex = Expression::from_str(&input)
         .expect("Failed to parse expression");
     println!("Expression: {}", ex.to_string());
 
