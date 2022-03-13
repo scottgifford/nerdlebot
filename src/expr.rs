@@ -35,20 +35,33 @@ pub struct Expression {
 
 impl Expression {
     pub fn calculate(&self) -> Result<ExpressionNumber, InvalidExpressionError> {
-        // TODO: Does not correctly implement order of expressions
+        // TODO: Is this efficient?
+        let first_parts = &self.parts;
+        let mut next_parts: Vec<ExpressionPart> = Vec::new();
+        let mut next_parts_2: Vec<ExpressionPart> = Vec::new();
+
+
+        // println!("parts: {:?}", first_parts);
+        Expression::calculate_for_precedence(first_parts, 0, &mut next_parts)?;
+        // println!("next_parts: {:?}", next_parts);
+        Expression::calculate_for_precedence(&next_parts, 1, &mut next_parts_2)?;
+        // println!("next_parts_2: {:?}", next_parts_2);
+
+        if next_parts_2.len() != 1 {
+            return Err(InvalidExpressionError { message: format!("Final expression didn't contained {} elements instead of 1", next_parts_2.len()) })
+        }
+
+        match &next_parts_2[0] {
+            ExpressionPart::Number(num) => Ok(num.clone()),
+            _ => Err(InvalidExpressionError { message: format!("next_parts_2 element 1 is not a number!") }),
+        }
+    }
+
+    pub fn calculate_for_precedence(parts: &Vec<ExpressionPart>, precedence: u8, next_parts: &mut Vec<ExpressionPart>) -> Result<(), InvalidExpressionError> {
         let mut state = ExpressionCalculateState::ExpectNumber;
         let mut cur: Option<ExpressionNumber> = None;
         let mut op: Option<&Box<dyn ExpressionOperator>> = None;
-        // TODO: Is this efficient?
-        let mut next_parts: Vec<ExpressionPart> = Vec::new();
-        let mut parts = &self.parts;
 
-
-        // TODO: If we e.g. unshifted from the vec would that make ownership simpler?
-
-        // First pass for order of operations: Multiplication, Division
-        // TODO: Fix code duplication (maybe loop over precedence list)
-        // println!("parts: {:?}", parts);
         for part in parts {
             match state {
                 ExpressionCalculateState::ExpectNumber => match part {
@@ -72,7 +85,7 @@ impl Expression {
 
                 ExpressionCalculateState::ExpectOperator => match part {
                     ExpressionPart::Operator(op2) => {
-                        if op2.precedence() == 0 {
+                        if op2.precedence() == precedence {
                             op = Some(op2);
                         } else {
                             match cur {
@@ -89,58 +102,21 @@ impl Expression {
                     ExpressionPart::Number(num) => return Err(InvalidExpressionError { message: format!("Expected Operator but got {}", num) })
                 }
             }
+        }
+
+        match state {
+            ExpressionCalculateState::ExpectNumber => return Err(InvalidExpressionError { message: String::from("Expected number but expression ended") }),
+            _ => {},
         };
 
         match cur {
             Some(cur2) => {
                 next_parts.push(ExpressionPart::Number(cur2.clone()));
-                cur = None;         
             }
             None => { }
         };
 
-        // Now loop again for lower-priority operators
-
-        state = ExpressionCalculateState::ExpectNumber;
-        parts = &next_parts;
-        // println!("parts: {:?}", parts);
-        for part in parts {
-            match state {
-                ExpressionCalculateState::ExpectNumber => match part {
-                    ExpressionPart::Number(num) => {
-                        cur = match op {
-                            Some(op2) => {
-                                match cur {
-                                    Some(cur2) => Some(op2.operate(&cur2, &num)),
-                                    None => return Err(InvalidExpressionError { message: format!("Operator missing first operand somehow L122") }),
-                                }
-                            },
-                            None => Some(num.clone()),
-                        };
-                        state = ExpressionCalculateState::ExpectOperator;
-                    },
-                    ExpressionPart::Operator(op) => return Err(InvalidExpressionError { message: format!("Expected Number but got {}", op) }),
-                },
-
-                ExpressionCalculateState::ExpectOperator => match part {
-                    ExpressionPart::Operator(op2) => {
-                        op = Some(&op2);
-                        state = ExpressionCalculateState::ExpectNumber;
-                    },
-                    ExpressionPart::Number(num) => return Err(InvalidExpressionError { message: format!("Expected Operator but got {}", num) })
-                }
-            }
-        }
-
-        match state {
-            ExpressionCalculateState::ExpectNumber => return Err(InvalidExpressionError { message: String::from("Expected number but string ended") }),
-            _ => {},
-        };
-
-        match cur {
-            Some(ret) => return Ok(ret),
-            None => return Err(InvalidExpressionError { message: String::from("No values found") }),
-        }
+        Ok(())
     }
 }
 
