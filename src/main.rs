@@ -1,6 +1,7 @@
 use std::io;
 use std::fmt;
 
+#[derive(Clone,Debug)]
 pub struct InvalidExpressionError {
     message: String,
 }
@@ -28,7 +29,10 @@ impl Expression {
             s.push_str(&part.to_string());
             s.push_str(" ");
         }
-        s.truncate(s.len()-1);
+        if (s.len() > 0) {
+            // Get rid of the extra trailing space we added
+            s.truncate(s.len()-1);
+        }
         return s;
     }
 
@@ -65,6 +69,11 @@ impl Expression {
                 }
             }
         }
+
+        match state {
+            ExpressionCalculateState::ExpectNumber => return Err(InvalidExpressionError { message: String::from("Expected number but string ended") }),
+            _ => {},
+        };
 
         match cur {
             Some(ret) => return Ok(ret),
@@ -213,35 +222,30 @@ fn parse_expression(input: &str) -> Result<Expression,InvalidExpressionError> {
     let mut accum: u32 = 0;
 
     for (_i, &item) in input.as_bytes().iter().enumerate() {
-        if item >= b'0' && item <= b'9' {
-            in_num = true;
-            accum *= 10;
-            accum += (item - b'0') as u32;
-        } else {
-            if in_num {
-                parts.push(ExpressionPart::Number(ExpressionNumber {
-                    value: accum,
-                }));
+        match item {
+            b'0'..=b'9' => {
+                in_num = true;
+                accum *= 10;
+                accum += (item - b'0') as u32;    
+            },
+            _ => {
+                if in_num {
+                    parts.push(ExpressionPart::Number(ExpressionNumber {
+                        value: accum,
+                    }));
+                }
+                accum = 0;
+                in_num = false;
+                match item {
+                    b' ' | b'\n' | b'\r' => { } // No-op (but already ended number)
+                    b'+' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorPlus { }))),
+                    b'-' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorMinus { }))),
+                    b'*' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorTimes { }))),
+                    b'/' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorDivide { }))),
+                    _ =>  return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character '{}'", item as char) }),
+                }
             }
-            accum = 0;
-            in_num = false;
-            if item == b' ' || item == b'\n' {
-                // No-Op (but end number)
-            } else if item == b'+' {
-                parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorPlus {
-                })));
-            } else if item == b'-' {
-                parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorMinus {
-                })));
-            } else if item == b'*' {
-                parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorTimes {
-                })));
-            } else if item == b'/' {
-                parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorDivide {
-                })));
-            } else {
-                return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character {}", item) });
-            }
+
         }
     }
 
@@ -260,14 +264,11 @@ fn main() {
 
     println!("You inputed: {}", input);
 
-    let ex = match parse_expression(&input) {
-        Ok(ex2) => ex2,
-        Err(err) => panic!("{}", err),
-    };
+    let ex = parse_expression(&input)
+        .expect("Failed to parse expression");
     println!("Expression: {}", ex.to_string());
-    let res = match ex.calculate() {
-        Ok(res2) => res2,
-        Err(err) => panic!("{}", err),
-    };
+
+    let res = ex.calculate()
+        .expect("Failed to calculate expression");
     println!("Calculation: {}", res.to_string());
 }
