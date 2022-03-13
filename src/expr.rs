@@ -57,7 +57,7 @@ impl Expression {
 
         // First pass for order of operations: Multiplication, Division
         // TODO: Fix code duplication (maybe loop over precedence list)
-        println!("parts: {:?}", parts);
+        // println!("parts: {:?}", parts);
         for part in parts {
             match state {
                 ExpressionCalculateState::ExpectNumber => match part {
@@ -112,7 +112,7 @@ impl Expression {
 
         state = ExpressionCalculateState::ExpectNumber;
         parts = &next_parts;
-        println!("parts: {:?}", parts);
+        // println!("parts: {:?}", parts);
         for part in parts {
             match state {
                 ExpressionCalculateState::ExpectNumber => match part {
