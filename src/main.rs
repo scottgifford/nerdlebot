@@ -17,11 +17,9 @@ pub struct Equation {
 }
 
 enum ExpressionCalculateState {
-    FirstNumber,
     ExpectOperator,
-    ExpectOperand,
+    ExpectNumber,
 }
-
 
 impl Expression {
     fn to_string(&self) -> String {
@@ -36,40 +34,35 @@ impl Expression {
 
     fn calculate(&self) -> Result<ExpressionNumber, InvalidExpressionError> {
         // TODO: Does not correctly implement order of expressions
-        let mut state = ExpressionCalculateState::FirstNumber;
+        let mut state = ExpressionCalculateState::ExpectNumber;
         let mut cur: Option<ExpressionNumber> = None;
         let mut op: Option<&Box<dyn ExpressionOperator>> = None;
 
         for part in &self.parts {
-            match part {
-                ExpressionPart::Number(num) => {
-                    match state {
-                        ExpressionCalculateState::FirstNumber => {
-                            cur = Some(num.clone());
-                            state = ExpressionCalculateState::ExpectOperator;
-                        },
-                        ExpressionCalculateState::ExpectOperand => match op {
-                                Some(op2) => match cur {
-                                    Some(cur2) => {
-                                        cur = Some(op2.operate(&cur2, num));
-                                        state = ExpressionCalculateState::ExpectOperator;
-                                    },
-                                    None => return Err(InvalidExpressionError { message: String::from("Operator missing first operand") }),
+            match state {
+                ExpressionCalculateState::ExpectNumber => match part {
+                    ExpressionPart::Number(num) => {
+                        cur = match op {
+                            Some(op2) => {
+                                match cur {
+                                    Some(cur2) => Some(op2.operate(&cur2, num)),
+                                    None => return Err(InvalidExpressionError { message: format!("Operator missing first operand somehow") }),
                                 }
-                                None => return Err(InvalidExpressionError { message: String::from("Expected operator") }),
-                        },
-                        ExpressionCalculateState::ExpectOperator => return Err(InvalidExpressionError { message: String::from("Expected operator but got a number") }),
-                    }
+                            },
+                            None => Some(num.clone()),
+                        };
+                        state = ExpressionCalculateState::ExpectOperator;
+                    },
+                    ExpressionPart::Operator(op) => return Err(InvalidExpressionError { message: format!("Expected Number but got {}", op) }),
                 },
-                ExpressionPart::Operator(op2) => {
-                    match state {
-                        ExpressionCalculateState::ExpectOperator => {
-                            op = Some(op2);
-                            state = ExpressionCalculateState::ExpectOperand;
-                        },
-                        ExpressionCalculateState::FirstNumber | ExpressionCalculateState::ExpectOperand => return Err(InvalidExpressionError { message: String::from("Expected number but got an operator") }),
-                    }
-                },
+
+                ExpressionCalculateState::ExpectOperator => match part {
+                    ExpressionPart::Operator(op2) => {
+                        op = Some(op2);
+                        state = ExpressionCalculateState::ExpectNumber;
+                    },
+                    ExpressionPart::Number(num) => return Err(InvalidExpressionError { message: format!("Expected Operator but got {}", num) })
+                }
             }
         }
 
@@ -90,23 +83,24 @@ pub enum ExpressionPart {
     Operator(Box<dyn ExpressionOperator>),
 }
 
-impl ToString for ExpressionPart {
-    fn to_string(&self) -> String {
+impl fmt::Display for ExpressionPart {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ExpressionPart::Number(num) => num.to_string(),
-            ExpressionPart::Operator(op) => op.to_string(),
+            ExpressionPart::Number(num) => write!(f, "{}", num),
+            ExpressionPart::Operator(op) => write!(f, "{}", op),
         }
     }
 }
+
 
 #[derive(Clone)]
 pub struct ExpressionNumber {
     value: u32,
 }
 
-impl ToString for ExpressionNumber {
-    fn to_string(&self) -> String {
-        return self.value.to_string();
+impl fmt::Display for ExpressionNumber {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -117,7 +111,7 @@ impl ExpressionNumber {
     }
 }
 
-pub trait ExpressionOperator: ToString {
+pub trait ExpressionOperator: fmt::Display {
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber;
     fn len(&self) -> usize;
 }
@@ -126,14 +120,14 @@ pub struct ExpressionOperatorPlus {
 
 }
 
-impl ToString for ExpressionOperatorPlus {
-    fn to_string(&self) -> String {
-        return "+".to_string()
+impl fmt::Display for ExpressionOperatorPlus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "+")
     }
 }
 
-impl ExpressionOperator for ExpressionOperatorPlus {
 
+impl ExpressionOperator for ExpressionOperatorPlus {
     fn len(&self) -> usize {
         1
     }
@@ -149,9 +143,9 @@ pub struct ExpressionOperatorMinus {
 
 }
 
-impl ToString for ExpressionOperatorMinus {
-    fn to_string(&self) -> String {
-        "-".to_string()
+impl fmt::Display for ExpressionOperatorMinus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "-")
     }
 }
 
@@ -171,13 +165,13 @@ pub struct ExpressionOperatorTimes {
 
 }
 
-impl ToString for ExpressionOperatorTimes {
-    fn to_string(&self) -> String {
-        "*".to_string()
+impl fmt::Display for ExpressionOperatorTimes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "*")
     }
 }
-impl ExpressionOperator for ExpressionOperatorTimes {
 
+impl ExpressionOperator for ExpressionOperatorTimes {
     fn len(&self) -> usize {
         1
     }
@@ -193,9 +187,9 @@ pub struct ExpressionOperatorDivide {
 
 }
 
-impl ToString for ExpressionOperatorDivide {
-    fn to_string(&self) -> String {
-        "/".to_string()
+impl fmt::Display for ExpressionOperatorDivide {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "/")
     }
 }
 
