@@ -170,6 +170,15 @@ impl ExpressionNumber {
     }
 }
 
+pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Display + fmt::Debug {
+    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber;
+    fn len(&self) -> usize {
+        1
+    }
+    fn precedence(&self) -> u8;
+}
+
+
 pub trait ExpressionOperatorClone {
     fn clone_box(&self) -> Box<dyn ExpressionOperator>;
 }
@@ -190,16 +199,10 @@ impl Clone for Box<dyn ExpressionOperator> {
     }
 }
 
-pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Display + fmt::Debug {
-    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber;
-    fn len(&self) -> usize;
-    fn precedence(&self) -> u8;
-}
 
 
 #[derive(Clone, Debug)]
 pub struct ExpressionOperatorPlus {
-
 }
 
 impl fmt::Display for ExpressionOperatorPlus {
@@ -210,10 +213,6 @@ impl fmt::Display for ExpressionOperatorPlus {
 
 
 impl ExpressionOperator for ExpressionOperatorPlus {
-    fn len(&self) -> usize {
-        1
-    }
-
     fn precedence(&self) -> u8 {
         1
     }
@@ -237,10 +236,6 @@ impl fmt::Display for ExpressionOperatorMinus {
 }
 
 impl ExpressionOperator for ExpressionOperatorMinus {
-    fn len(&self) -> usize {
-        1
-    }
-
     fn precedence(&self) -> u8 {
         1
     }
@@ -255,7 +250,6 @@ impl ExpressionOperator for ExpressionOperatorMinus {
 
 #[derive(Clone, Debug)]
 pub struct ExpressionOperatorTimes {
-
 }
 
 impl fmt::Display for ExpressionOperatorTimes {
@@ -265,10 +259,6 @@ impl fmt::Display for ExpressionOperatorTimes {
 }
 
 impl ExpressionOperator for ExpressionOperatorTimes {
-    fn len(&self) -> usize {
-        1
-    }
-
     fn precedence(&self) -> u8 {
         0
     }
@@ -292,10 +282,6 @@ impl fmt::Display for ExpressionOperatorDivide {
 }
 
 impl ExpressionOperator for ExpressionOperatorDivide {
-    fn len(&self) -> usize {
-        return 1;
-    }
-
     fn precedence(&self) -> u8 {
         0
     }
@@ -339,7 +325,6 @@ impl FromStr for Expression {
                         _ =>  return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character '{}'", item as char) }),
                     }
                 }
-
             }
         }
 
