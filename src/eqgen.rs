@@ -21,7 +21,7 @@ enum Operators {
     Plus,
     Minus,
     Times,
-    // Divide,
+    Divide,
 }
 
 pub fn eqgen() -> Result<Equation, NoMatchFound> {
@@ -29,19 +29,21 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         Operators::Plus,
         Operators::Minus,
         Operators::Times,
+        Operators::Divide,
     ];
 
     let mut rng = rand::thread_rng();
 
     // TODO: Use constant
-    for _try in 1..100 {
-        let op = &ALL_OPS[rng.gen_range(0..ALL_OPS.len())];
+    let op = &ALL_OPS[rng.gen_range(0..ALL_OPS.len())];
+    for _try in 1..1000 {
 
         let c = rng.gen_range(0..999);
         let a = match op {
-            Operators::Plus => rng.gen_range(0..c),
-            Operators::Minus => rng.gen_range(c..1000),
-            Operators::Times => rng.gen_range(1..(c as f64).sqrt() as u32),
+            Operators::Plus => rng.gen_range(0..=c),
+            Operators::Minus => rng.gen_range(c..=999),
+            Operators::Times => rng.gen_range(1..=(c as f64).sqrt() as u32),
+            Operators::Divide => rng.gen_range(1..=c*c),
         };
         let b = match op {
             Operators::Plus => c - a,
@@ -50,16 +52,25 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
                 if c % a == 0 {
                     c / a
                 } else {
-                    println!("Couldn't find b for {} * b = {}", a, c);
+                    // println!("Couldn't find b for {} * b = {}", a, c);
+                    continue
+                }
+            },
+            Operators::Divide => {
+                if a % c == 0 {
+                    a / c
+                } else {
+                    // println!("Couldn't find b for {} / b = {}", a, c);
                     continue
                 }
             }
+
         };
         let op: Box<dyn expr::ExpressionOperator> = match op {
             Operators::Plus => Box::new(expr::ExpressionOperatorPlus { }),
             Operators::Minus => Box::new(expr::ExpressionOperatorMinus { }),
             Operators::Times => Box::new(expr::ExpressionOperatorTimes { }),
-
+            Operators::Divide => Box::new(expr::ExpressionOperatorDivide { }),
         };
         let op = ExpressionPart::Operator(op);
 
