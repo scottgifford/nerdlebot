@@ -149,7 +149,7 @@ impl fmt::Display for ExpressionPart {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExpressionNumber {
-    value: u32,
+    pub value: u32,
 }
 
 impl fmt::Display for ExpressionNumber {

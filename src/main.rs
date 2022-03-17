@@ -3,9 +3,11 @@ use std::fmt;
 
 mod eq;
 mod expr;
+mod eqgen;
 
 use crate::eq::Equation;
 use crate::expr::Expression;
+use crate::eqgen::eqgen;
 
 #[derive(Clone)]
 pub struct CommandLineError {
@@ -54,6 +56,16 @@ fn main() -> Result<(), CommandLineError> {
             println!("Equation Computes: {}", res);
             Ok(())
         },
+
+        Some("gen") => {
+            let eq = eqgen();
+            println!("Equation: {}", &eq);
+            let res = eq.computes()
+                .expect("Failed to compute expression");
+            println!("Equation Computes: {}", res);
+            Ok(())
+        },
+
 
         Some(oops) => Err(CommandLineError { message: format!("Unrecognized command '{}'", oops) } ),
 
