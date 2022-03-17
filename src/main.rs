@@ -29,6 +29,9 @@ impl fmt::Debug for CommandLineError {
     }
 }
 
+fn prettylen(len: usize) -> String {
+    format!("{} ({})", "-".repeat(len), len)
+}
 
 fn main() -> Result<(), CommandLineError> {
     let cmd = std::env::args().nth(1);
@@ -39,6 +42,7 @@ fn main() -> Result<(), CommandLineError> {
             let expr = Expression::from_str(&expr)
                 .expect("Failed to parse expression");
             println!("Expression: {}", &expr);
+            println!("    Length: {}", prettylen(expr.len()));
             let res = expr.calculate()
                 .expect("Failed to compute expression");
             println!("Equation Computes: {}", res);
@@ -51,6 +55,7 @@ fn main() -> Result<(), CommandLineError> {
             let eq = Equation::from_str(&eq)
                 .expect("Failed to parse equation");
             println!("Equation: {}", &eq);
+            println!("  Length: {}", prettylen(eq.len()));
             let res = eq.computes()
                 .expect("Failed to compute expression");
             println!("Equation Computes: {}", res);
@@ -61,6 +66,7 @@ fn main() -> Result<(), CommandLineError> {
             let eq = eqgen()
                 .expect("Failed to generate equation");
             println!("Equation: {}", &eq);
+            println!("  Length: {}", prettylen(eq.len()));
             let res = eq.computes()
                 .expect("Failed to compute expression");
             println!("Equation Computes: {}", res);

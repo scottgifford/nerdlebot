@@ -113,6 +113,10 @@ impl Expression {
 
         Ok(())
     }
+
+    pub fn len(&self) -> usize {
+        self.parts.iter().fold(0, |sum, part| sum + ExpressionPart::len(&part))
+    }
 }
 
 impl fmt::Display for Expression {
@@ -122,7 +126,8 @@ impl fmt::Display for Expression {
             if is_first {
                 is_first = false;
             } else {
-                write!(f, " ")?
+                // Uncomment for more pretty but harder-to-eyeball length
+                // write!(f, " ")?
             }
             write!(f, "{}", &part.to_string())?
         }
@@ -142,6 +147,15 @@ impl fmt::Display for ExpressionPart {
             // TODO: Can this be simplified?
             ExpressionPart::Number(num) => write!(f, "{}", num),
             ExpressionPart::Operator(op) => write!(f, "{}", op),
+        }
+    }
+}
+
+impl ExpressionPart {
+    pub fn len(&self) -> usize {
+        match self {
+            ExpressionPart::Number(num) => num.len(),
+            ExpressionPart::Operator(op) => op.len(),
         }
     }
 }

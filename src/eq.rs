@@ -16,6 +16,10 @@ impl Equation {
         let calc = self.expr.calculate()?;
         Ok(calc == self.res)
     }
+
+    pub fn len(&self) -> usize {
+        self.expr.len() + self.res.len() + 1
+    }
 }
 
 impl FromStr for Equation {
