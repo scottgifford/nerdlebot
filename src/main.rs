@@ -58,7 +58,8 @@ fn main() -> Result<(), CommandLineError> {
         },
 
         Some("gen") => {
-            let eq = eqgen();
+            let eq = eqgen()
+                .expect("Failed to generate equation");
             println!("Equation: {}", &eq);
             let res = eq.computes()
                 .expect("Failed to compute expression");
