@@ -1,5 +1,6 @@
 use std::fmt;
 use rand::Rng;
+use rand::distributions::{Distribution, Standard};
 
 use crate::eq::Equation;
 use crate::expr::ExpressionNumber;
@@ -17,6 +18,7 @@ pub fn mknump(x:u32) -> ExpressionPart {
     ExpressionPart::Number(mknum(x))
 }
 
+#[derive(Debug)]
 enum Operators {
     Plus,
     Minus,
@@ -24,18 +26,23 @@ enum Operators {
     Divide,
 }
 
-pub fn eqgen() -> Result<Equation, NoMatchFound> {
-    let ALL_OPS = [
-        Operators::Plus,
-        Operators::Minus,
-        Operators::Times,
-        Operators::Divide,
-    ];
+impl Distribution<Operators> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Operators {
+        match rng.gen_range(0..4) {
+            0 => Operators::Plus,
+            1 => Operators::Minus,
+            2 => Operators::Times,
+            3 => Operators::Divide,
+            _ => panic!("Out-of-range random number chosen!")
+        }
+    }
+}
 
+pub fn eqgen() -> Result<Equation, NoMatchFound> {
     let mut rng = rand::thread_rng();
 
-    // TODO: Use constant
-    let op = &ALL_OPS[rng.gen_range(0..ALL_OPS.len())];
+    let op: Operators = rand::random();
+
     for _try in 1..1000 {
 
         let c = rng.gen_range(0..999);
@@ -74,15 +81,21 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         };
         let op = ExpressionPart::Operator(op);
 
-        // TODO: Verify it computes, log an error if not
-        return Ok(Equation {
+        let eq = Equation {
             expr: Expression { parts: Vec::from([
                 mknump(a),
                 op,
                 mknump(b),
             ]) },
             res: mknum(c),
-        })
+        };
+
+        if !eq.computes().unwrap_or(false) {
+            println!("Equation unexpectedly did not compute: {}", eq);
+            continue;
+        }
+
+        return Ok(eq);
     }
 
     return Err(NoMatchFound { message: format!("Failed to generate equation after 100 attempts") })
