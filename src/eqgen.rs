@@ -45,7 +45,7 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
 
     for _try in 1..1000 {
 
-        let c = rng.gen_range(0..999);
+        let c = rng.gen_range(1..999);
         let a = match op {
             Operators::Plus => rng.gen_range(0..=c),
             Operators::Minus => rng.gen_range(c..=999),
