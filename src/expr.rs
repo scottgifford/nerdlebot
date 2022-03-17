@@ -19,18 +19,13 @@ impl fmt::Debug for InvalidExpressionError {
     }
 }
 
-pub struct Equation {
-    expr: Expression,
-    res: ExpressionNumber,
-}
-
 enum ExpressionCalculateState {
     ExpectOperator,
     ExpectNumber,
 }
 
 pub struct Expression {
-    parts: Vec<ExpressionPart>,
+    pub parts: Vec<ExpressionPart>,
 }
 
 impl Expression {
@@ -152,7 +147,7 @@ impl fmt::Display for ExpressionPart {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ExpressionNumber {
     value: u32,
 }
@@ -301,7 +296,9 @@ impl FromStr for Expression {
         let mut in_num: bool = false;
         let mut accum: u32 = 0;
 
-        for (_i, &item) in input.as_bytes().iter().enumerate() {
+        // Simulate an extra space on the end so we get the last number
+        let iter = input.as_bytes().iter().chain(" ".as_bytes().iter());
+        for &item in iter {
             match item {
                 b'0'..=b'9' => {
                     in_num = true;

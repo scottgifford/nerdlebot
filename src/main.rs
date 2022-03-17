@@ -1,11 +1,13 @@
 use std::io;
 use std::str::FromStr;
 
+mod eq;
 mod expr;
-use crate::expr::Expression;
+
+use crate::eq::Equation;
 
 fn main() {
-    println!("Enter an Expression to parse");
+    println!("Enter an Equation to parse");
 
     let mut input = String::new();
     io::stdin()
@@ -14,11 +16,11 @@ fn main() {
 
     println!("You inputed: {}", input);
 
-    let ex = Expression::from_str(&input)
-        .expect("Failed to parse expression");
-    println!("Expression: {}", ex.to_string());
+    let eq = Equation::from_str(&input)
+        .expect("Failed to parse equation");
+    println!("Expression: {}", eq.to_string());
 
-    let res = ex.calculate()
-        .expect("Failed to calculate expression");
-    println!("Calculation: {}", res.to_string());
+    let res = eq.computes()
+        .expect("Failed to compute expression");
+    println!("Equation Computes: {}", res.to_string());
 }
