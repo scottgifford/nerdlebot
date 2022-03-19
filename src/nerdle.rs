@@ -3,8 +3,10 @@ use crate::eq::Equation;
 use std::fmt;
 use std::collections::HashMap;
 
+use crate::expr;
 
 pub const NERDLE_CHARACTERS: u32 = 10;
+pub const NERDLE_TURNS: u32 = 6;
 
 pub fn nerdle_str(guess: &str, answer: &str) -> Result<NerdleResult, NerdleError> {
     let mut result = NerdleResult { positions: [NerdlePositionResult::Gray; NERDLE_CHARACTERS as usize] };
@@ -62,6 +64,12 @@ pub fn nerdle_str(guess: &str, answer: &str) -> Result<NerdleResult, NerdleError
 }
 
 pub fn nerdle(guess: &Equation, answer: &Equation) -> Result<NerdleResult, NerdleError> {
+    if !guess.computes()? {
+        return Err(NerdleError { message: format!("Guess does not compute: {}", guess)});
+    }
+    if !answer.computes()? {
+        return Err(NerdleError { message: format!("Answer does not compute: {}", answer)});
+    }
     nerdle_str(&guess.to_string(), &answer.to_string())
 }
 
@@ -102,15 +110,19 @@ pub struct NerdleError {
 
 impl fmt::Display for NerdleError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "NoMatchFound
-    : {}", self.message)
+        write!(f, "NerdleError: {}", self.message)
     }
 }
 
 impl fmt::Debug for NerdleError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // TODO: Line and file are this one, not caller?!
-        write!(f, "NoMatchFound
-    : {} at {{ file: {}, line: {} }}", self.message, file!(), line!()) // programmer-facing output
+        write!(f, "NerdleError : {} at {{ file: {}, line: {} }}", self.message, file!(), line!()) // programmer-facing output
+    }
+}
+
+impl From<expr::InvalidExpressionError> for NerdleError {
+    fn from(error: expr::InvalidExpressionError) -> Self {
+        NerdleError { message : format!("Invalid expression: {}", error) }
     }
 }

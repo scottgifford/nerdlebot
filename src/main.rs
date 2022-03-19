@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::io;
 use std::fmt;
 
 mod eq;
@@ -10,7 +11,6 @@ mod nerdle;
 use crate::eq::Equation;
 use crate::expr::Expression;
 use crate::eqgen::eqgen;
-use crate::nerdle::nerdle;
 
 #[derive(Clone)]
 pub struct CommandLineError {
@@ -34,6 +34,18 @@ impl fmt::Debug for CommandLineError {
 
 fn prettylen(len: usize) -> String {
     format!("{} ({})", "-".repeat(len), len)
+}
+
+macro_rules! skip_fail {
+    ($res:expr, $message:expr) => {
+        match $res {
+            Ok(val) => val,
+            Err(e) => {
+                println!("{} (Error {})", $message, e);
+                continue;
+            }
+        }
+    };
 }
 
 fn main() -> Result<(), CommandLineError> {
@@ -89,10 +101,34 @@ fn main() -> Result<(), CommandLineError> {
                 .expect("Failed to parse equation in arg 3");
             println!(" Guess: {}", &guess);
 
-            let res = nerdle(&guess, &answer)
+            let res = nerdle::nerdle(&guess, &answer)
                 .expect("Failed to nerdle");
 
             println!("Result: {}", res);
+            Ok(())
+        },
+
+        Some("play") => {
+            let answer = eqgen()
+                .expect("Failed to generate equation");
+
+            for turn in 1..=nerdle::NERDLE_TURNS {
+                let res;
+                loop {
+                    println!("Turn {} Enter Guess:", turn);
+                    let mut input = String::new();
+                    skip_fail!(io::stdin().read_line(&mut input), "Read error, try again");
+                    let cleanput = input.trim_end();
+                    println!("Read: {}", cleanput);
+                    let guess = skip_fail!(Equation::from_str(&cleanput), "Invalid equation, try again");
+                    res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed try again");
+                    break;
+                }
+                // TODO: Stop if we have won!
+                println!("Turn {} Result: {}", turn, res);
+            }
+            println!("Answer: {}", &answer);
+
             Ok(())
         },
 
