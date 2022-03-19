@@ -99,7 +99,10 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
     for _try in 1..ATTEMPTS {
         let mut chars_remaining: i32 = 10 - 1 /* for = */ -1 /* for operator chosen above */;
 
-        let c = rng.gen_range(1..999);
+        let c = rng.gen_range(match op {
+            Operators::Times => 1024..=9801, // 32*32 to 99*99, other values won't have 10 digits
+            _ => 1..=999
+        });
         let c_obj = mknum(c);
         // println!("Searching for solution for op {} and c {}", op, c_obj);
         chars_remaining -= c_obj.len() as i32;
