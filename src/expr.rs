@@ -344,3 +344,14 @@ impl FromStr for Expression {
         })
     }
 }
+
+
+pub fn mknum(x:u32) -> ExpressionNumber {
+    ExpressionNumber {
+        value: x
+    }
+}
+
+pub fn mknump(x:u32) -> ExpressionPart {
+    ExpressionPart::Number(mknum(x))
+}

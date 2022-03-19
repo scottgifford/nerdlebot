@@ -4,6 +4,7 @@ use std::fmt;
 mod eq;
 mod expr;
 mod eqgen;
+mod constraint;
 
 use crate::eq::Equation;
 use crate::expr::Expression;

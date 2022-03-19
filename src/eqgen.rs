@@ -1,25 +1,13 @@
 use std::fmt;
 use rand::Rng;
-use std::ops::RangeInclusive;
 use rand::distributions::{Distribution, Standard};
 
 use crate::eq::Equation;
-use crate::expr::ExpressionNumber;
-use crate::expr::Expression;
-use crate::expr::ExpressionPart;
-use crate::expr;
+use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, mknum, mknump};
+
+use crate::constraint::{find_num_with_constraint, ExpressionNumberConstraint, NoMatchFound};
 
 const ATTEMPTS: u32 = 1000;
-
-pub fn mknum(x:u32) -> ExpressionNumber {
-    ExpressionNumber {
-        value: x
-    }
-}
-
-pub fn mknump(x:u32) -> ExpressionPart {
-    ExpressionPart::Number(mknum(x))
-}
 
 #[derive(Debug)]
 enum Operators {
@@ -52,45 +40,6 @@ impl fmt::Display for Operators {
     }
 }
 
-pub struct EqGenNumConstraint<F>
-where
-    F: Fn(&ExpressionNumber) -> bool,
-{
-    range: RangeInclusive<u32>,
-    description: String,
-    accept: F,
-}
-
-impl<F> fmt::Display for EqGenNumConstraint<F>
-where
-    F: Fn(&ExpressionNumber) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EqGenNumConstraint \"{}\": range={}..={}", self.description, self.range.start(), self.range.end())
-    }
-}
-
-
-pub fn find_num_with_constraint<F>(rng: &mut impl Rng, constraint: &EqGenNumConstraint<F>) -> Result<ExpressionNumber, NoMatchFound>
-where
-    F: Fn(&ExpressionNumber) -> bool,
-{
-    if constraint.range.is_empty() {
-        return Err(NoMatchFound { message: format!("Invalid range in constraint: {}", constraint)});
-    }
-
-    for _try in 1..ATTEMPTS {
-        let candidate = rng.gen_range(constraint.range.clone());
-        let candidate = mknum(candidate);
-        if !(constraint.accept)(&candidate) {
-            // println!("  Rejected {} with constraint {}", candidate, constraint);
-            continue;
-        }
-        return Ok(candidate);
-    }
-    Err(NoMatchFound { message: format!("No match found for constraint {} after {} tries", constraint, ATTEMPTS)})
-}
-
 pub fn eqgen() -> Result<Equation, NoMatchFound> {
     let mut rng = rand::thread_rng();
 
@@ -112,10 +61,10 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         let describer = | | format!("chars < {}", (chars_remaining - chars_reserved));
 
         let a_obj = match op {
-            Operators::Plus => find_num_with_constraint(&mut rng, &EqGenNumConstraint { range: 0..=c, description: describer(), accept }),
-            Operators::Minus => find_num_with_constraint(&mut rng, &EqGenNumConstraint{ range: c..=999, description: describer(), accept }),
-            Operators::Times => find_num_with_constraint(&mut rng, &EqGenNumConstraint { range: 1..=c/2, description: describer(), accept: |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n) }),
-            Operators::Divide => find_num_with_constraint(&mut rng, &EqGenNumConstraint { range: 1..=c*c, description: describer(), accept: |n| n.value % c == 0 && accept(n) }),
+            Operators::Plus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 0..=c, description: describer(), accept }),
+            Operators::Minus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint{ range: c..=999, description: describer(), accept }),
+            Operators::Times => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 1..=c/2, description: describer(), accept: |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n) }),
+            Operators::Divide => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 1..=c*c, description: describer(), accept: |n| n.value % c == 0 && accept(n) }),
         };
         let a_obj = match a_obj {
             Ok(a) => a,
@@ -151,11 +100,11 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
             continue;
         }
 
-        let op: Box<dyn expr::ExpressionOperator> = match op {
-            Operators::Plus => Box::new(expr::ExpressionOperatorPlus { }),
-            Operators::Minus => Box::new(expr::ExpressionOperatorMinus { }),
-            Operators::Times => Box::new(expr::ExpressionOperatorTimes { }),
-            Operators::Divide => Box::new(expr::ExpressionOperatorDivide { }),
+        let op: Box<dyn ExpressionOperator> = match op {
+            Operators::Plus => Box::new(ExpressionOperatorPlus { }),
+            Operators::Minus => Box::new(ExpressionOperatorMinus { }),
+            Operators::Times => Box::new(ExpressionOperatorTimes { }),
+            Operators::Divide => Box::new(ExpressionOperatorDivide { }),
         };
         let op = ExpressionPart::Operator(op);
 
@@ -177,24 +126,4 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
     }
 
     Err(NoMatchFound { message: format!("Failed to generate equation for operator {} after {} attempts", op, ATTEMPTS) })
-}
-
-#[derive(Clone)]
-pub struct NoMatchFound {
-    message: String,
-}
-
-impl fmt::Display for NoMatchFound {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "NoMatchFound
-    : {}", self.message)
-    }
-}
-
-impl fmt::Debug for NoMatchFound {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // TODO: Line and file are this one, not caller?!
-        write!(f, "NoMatchFound
-    : {} at {{ file: {}, line: {} }}", self.message, file!(), line!()) // programmer-facing output
-    }
 }
