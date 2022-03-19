@@ -5,10 +5,12 @@ mod eq;
 mod expr;
 mod eqgen;
 mod constraint;
+mod nerdle;
 
 use crate::eq::Equation;
 use crate::expr::Expression;
 use crate::eqgen::eqgen;
+use crate::nerdle::nerdle;
 
 #[derive(Clone)]
 pub struct CommandLineError {
@@ -74,6 +76,25 @@ fn main() -> Result<(), CommandLineError> {
             Ok(())
         },
 
+        Some("eval") => {
+            let answer = std::env::args().nth(2)
+                .expect("no expr given in arg 2");
+            let answer = Equation::from_str(&answer)
+                .expect("Failed to parse equation in arg 2");
+            println!("Answer: {}", &answer);
+
+            let guess = std::env::args().nth(3)
+                .expect("no expr given in arg 3");
+            let guess = Equation::from_str(&guess)
+                .expect("Failed to parse equation in arg 3");
+            println!(" Guess: {}", &guess);
+
+            let res = nerdle(&guess, &answer)
+                .expect("Failed to nerdle");
+
+            println!("Result: {}", res);
+            Ok(())
+        },
 
         Some(oops) => Err(CommandLineError { message: format!("Unrecognized command '{}'", oops) } ),
 
