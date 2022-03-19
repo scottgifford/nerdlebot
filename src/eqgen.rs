@@ -1,5 +1,6 @@
 use std::fmt;
 use rand::Rng;
+use std::ops::RangeInclusive;
 use rand::distributions::{Distribution, Standard};
 
 use crate::eq::Equation;
@@ -55,8 +56,7 @@ pub struct EqGenNumConstraint<F>
 where
     F: Fn(&ExpressionNumber) -> bool,
 {
-    min: u32,
-    max: u32,
+    range: RangeInclusive<u32>,
     description: String,
     accept: F,
 }
@@ -66,7 +66,7 @@ where
     F: Fn(&ExpressionNumber) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EqGenNumConstraint \"{}\": min={} max={}", self.description, self.min, self.max)
+        write!(f, "EqGenNumConstraint \"{}\": range={}..={}", self.description, self.range.start(), self.range.end())
     }
 }
 
@@ -75,12 +75,12 @@ pub fn find_num_with_constraint<F>(rng: &mut impl Rng, constraint: &EqGenNumCons
 where
     F: Fn(&ExpressionNumber) -> bool,
 {
-    if constraint.max < constraint.min {
-        return Err(NoMatchFound { message: format!("Invalid constraint: {}", constraint)});
+    if constraint.range.is_empty() {
+        return Err(NoMatchFound { message: format!("Invalid range in constraint: {}", constraint)});
     }
 
     for _try in 1..ATTEMPTS {
-        let candidate = rng.gen_range(constraint.min..=constraint.max);
+        let candidate = rng.gen_range(constraint.range.clone());
         let candidate = mknum(candidate);
         if !(constraint.accept)(&candidate) {
             // println!("  Rejected {} with constraint {}", candidate, constraint);
@@ -108,12 +108,11 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         let accept = |n: &ExpressionNumber| n.len() as i32 <= (chars_remaining - 1);
         let describer = | | format!("chars < {}", (chars_remaining - chars_reserved));
 
-        // TODO: Use closure instead of repeating function
         let a_obj = match op {
-            Operators::Plus => find_num_with_constraint(&mut rng, &EqGenNumConstraint { min: 0, max: c, description: describer(), accept }),
-            Operators::Minus => find_num_with_constraint(&mut rng, &EqGenNumConstraint{ min: c, max: 999, description: describer(), accept }),
-            Operators::Times => find_num_with_constraint(&mut rng, &EqGenNumConstraint { min: 1, max: c/2, description: describer(), accept: |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n) }),
-            Operators::Divide => find_num_with_constraint(&mut rng, &EqGenNumConstraint { min: 1, max: c*c, description: describer(), accept: |n| n.value % c == 0 && accept(n) }),
+            Operators::Plus => find_num_with_constraint(&mut rng, &EqGenNumConstraint { range: 0..=c, description: describer(), accept }),
+            Operators::Minus => find_num_with_constraint(&mut rng, &EqGenNumConstraint{ range: c..=999, description: describer(), accept }),
+            Operators::Times => find_num_with_constraint(&mut rng, &EqGenNumConstraint { range: 1..=c/2, description: describer(), accept: |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n) }),
+            Operators::Divide => find_num_with_constraint(&mut rng, &EqGenNumConstraint { range: 1..=c*c, description: describer(), accept: |n| n.value % c == 0 && accept(n) }),
         };
         let a_obj = match a_obj {
             Ok(a) => a,
