@@ -1,55 +1,22 @@
-use std::fmt;
 use rand::Rng;
-use rand::distributions::{Distribution, Standard};
 
 use crate::eq::Equation;
-use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, mknum, mknump};
+use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum, mknum, mknump};
 
 use crate::constraint::{find_num_with_constraint, ExpressionNumberConstraint, NoMatchFound};
 
 const ATTEMPTS: u32 = 1000;
 
-#[derive(Debug)]
-enum Operators {
-    Plus,
-    Minus,
-    Times,
-    Divide,
-}
-
-impl Distribution<Operators> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Operators {
-        match rng.gen_range(0..4) {
-            0 => Operators::Plus,
-            1 => Operators::Minus,
-            2 => Operators::Times,
-            3 => Operators::Divide,
-            _ => panic!("Out-of-range random number chosen!")
-        }
-    }
-}
-
-impl fmt::Display for Operators {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            Operators::Plus => "+",
-            Operators::Minus => "-",
-            Operators::Times => "*",
-            Operators::Divide => "/",
-        })
-    }
-}
-
 pub fn eqgen() -> Result<Equation, NoMatchFound> {
     let mut rng = rand::thread_rng();
 
-    let op: Operators = rand::random();
+    let op: ExpressionOperatorEnum = rand::random();
 
     for _try in 1..ATTEMPTS {
         let mut chars_remaining: i32 = 10 - 1 /* for = */ -1 /* for operator chosen above */;
 
         let c = rng.gen_range(match op {
-            Operators::Times => 1024..=9801, // 32*32 to 99*99, other values won't have 10 digits
+            ExpressionOperatorEnum::Times => 1024..=9801, // 32*32 to 99*99, other values won't have 10 digits
             _ => 1..=999
         });
         let c_obj = mknum(c);
@@ -61,10 +28,10 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         let describer = | | format!("chars < {}", (chars_remaining - chars_reserved));
 
         let a_obj = match op {
-            Operators::Plus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 0..=c, description: describer(), accept }),
-            Operators::Minus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint{ range: c..=999, description: describer(), accept }),
-            Operators::Times => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 1..=c/2, description: describer(), accept: |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n) }),
-            Operators::Divide => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 1..=c*c, description: describer(), accept: |n| n.value % c == 0 && accept(n) }),
+            ExpressionOperatorEnum::Plus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 0..=c, description: describer(), accept }),
+            ExpressionOperatorEnum::Minus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint{ range: c..=999, description: describer(), accept }),
+            ExpressionOperatorEnum::Times => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 1..=c/2, description: describer(), accept: |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n) }),
+            ExpressionOperatorEnum::Divide => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: 1..=c*c, description: describer(), accept: |n| n.value % c == 0 && accept(n) }),
         };
         let a_obj = match a_obj {
             Ok(a) => a,
@@ -75,9 +42,9 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         // println!("  Chose a {}, {} chars left", a, chars_remaining);
 
         let b = match op {
-            Operators::Plus => c - a,
-            Operators::Minus => a - c,
-            Operators::Times => {
+            ExpressionOperatorEnum::Plus => c - a,
+            ExpressionOperatorEnum::Minus => a - c,
+            ExpressionOperatorEnum::Times => {
                 if c % a == 0 {
                     c / a
                 } else {
@@ -85,7 +52,7 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
                     continue
                 }
             },
-            Operators::Divide => {
+            ExpressionOperatorEnum::Divide => {
                 if a % c == 0 {
                     a / c
                 } else {
@@ -101,10 +68,10 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
         }
 
         let op: Box<dyn ExpressionOperator> = match op {
-            Operators::Plus => Box::new(ExpressionOperatorPlus { }),
-            Operators::Minus => Box::new(ExpressionOperatorMinus { }),
-            Operators::Times => Box::new(ExpressionOperatorTimes { }),
-            Operators::Divide => Box::new(ExpressionOperatorDivide { }),
+            ExpressionOperatorEnum::Plus => Box::new(ExpressionOperatorPlus { }),
+            ExpressionOperatorEnum::Minus => Box::new(ExpressionOperatorMinus { }),
+            ExpressionOperatorEnum::Times => Box::new(ExpressionOperatorTimes { }),
+            ExpressionOperatorEnum::Divide => Box::new(ExpressionOperatorDivide { }),
         };
         let op = ExpressionPart::Operator(op);
 

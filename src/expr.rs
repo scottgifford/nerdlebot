@@ -1,5 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
+use rand::Rng;
+use rand::distributions::{Distribution, Standard};
 
 #[derive(Clone)]
 pub struct InvalidExpressionError {
@@ -178,6 +180,39 @@ impl ExpressionNumber {
         return self.to_string().len();
     }
 }
+
+// TODO: This should be merged into ExpressionOperator, possibly replace it
+#[derive(Debug)]
+pub enum ExpressionOperatorEnum {
+    Plus,
+    Minus,
+    Times,
+    Divide,
+}
+
+impl Distribution<ExpressionOperatorEnum> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ExpressionOperatorEnum {
+        match rng.gen_range(0..4) {
+            0 => ExpressionOperatorEnum::Plus,
+            1 => ExpressionOperatorEnum::Minus,
+            2 => ExpressionOperatorEnum::Times,
+            3 => ExpressionOperatorEnum::Divide,
+            _ => panic!("Out-of-range random number chosen!")
+        }
+    }
+}
+
+impl fmt::Display for ExpressionOperatorEnum {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            ExpressionOperatorEnum::Plus => "+",
+            ExpressionOperatorEnum::Minus => "-",
+            ExpressionOperatorEnum::Times => "*",
+            ExpressionOperatorEnum::Divide => "/",
+        })
+    }
+}
+
 
 pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Display + fmt::Debug {
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber;
