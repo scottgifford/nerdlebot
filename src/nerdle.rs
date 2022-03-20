@@ -91,7 +91,7 @@ impl fmt::Display for NerdlePositionResult {
 }
 
 pub struct NerdleResult {
-    positions: [NerdlePositionResult; NERDLE_CHARACTERS as usize],
+    pub positions: [NerdlePositionResult; NERDLE_CHARACTERS as usize],
 }
 
 impl fmt::Display for NerdleResult {

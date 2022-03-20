@@ -2,6 +2,8 @@ use std::str::FromStr;
 use std::io;
 use std::fmt;
 
+use colored::*;
+
 mod eq;
 mod expr;
 mod eqgen;
@@ -34,6 +36,21 @@ impl fmt::Debug for CommandLineError {
 
 fn prettylen(len: usize) -> String {
     format!("{} ({})", "-".repeat(len), len)
+}
+
+
+fn pretty_print_result(guess: &str, res: nerdle::NerdleResult) {
+    let guess = guess.as_bytes();
+    for pos in 0..(nerdle::NERDLE_CHARACTERS as usize) {
+        let chs = String::from(guess[pos] as char);
+        let color_chs = match res.positions[pos] {
+            nerdle::NerdlePositionResult::Yellow => chs.black().on_yellow(),
+            nerdle::NerdlePositionResult::Green => chs.black().on_green(),
+            nerdle::NerdlePositionResult::Gray => chs.black().on_white(),
+        };
+        print!("{}", color_chs);
+    }
+    println!("");
 }
 
 macro_rules! skip_fail {
@@ -113,6 +130,7 @@ fn main() -> Result<(), CommandLineError> {
                 .expect("Failed to generate equation");
 
             for turn in 1..=nerdle::NERDLE_TURNS {
+                let mut guess;
                 let res;
                 loop {
                     println!("Turn {} Enter Guess:", turn);
@@ -120,12 +138,13 @@ fn main() -> Result<(), CommandLineError> {
                     skip_fail!(io::stdin().read_line(&mut input), "Read error, try again");
                     let cleanput = input.trim_end();
                     println!("Read: {}", cleanput);
-                    let guess = skip_fail!(Equation::from_str(&cleanput), "Invalid equation, try again");
+                    guess = skip_fail!(Equation::from_str(&cleanput), "Invalid equation, try again");
                     res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed try again");
                     break;
                 }
                 // TODO: Stop if we have won!
                 println!("Turn {} Result: {}", turn, res);
+                pretty_print_result(&guess.to_string(), res);
             }
             println!("Answer: {}", &answer);
 
