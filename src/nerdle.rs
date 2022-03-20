@@ -94,6 +94,18 @@ pub struct NerdleResult {
     pub positions: [NerdlePositionResult; NERDLE_CHARACTERS as usize],
 }
 
+impl NerdleResult {
+    pub fn won(&self) -> bool {
+        for pos in 0..(NERDLE_CHARACTERS as usize) {
+            match self.positions[pos] {
+                NerdlePositionResult::Green => { },
+                _ => return false
+            }
+        }
+        true
+    }
+}
+
 impl fmt::Display for NerdleResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for pos in 0..(NERDLE_CHARACTERS as usize) {

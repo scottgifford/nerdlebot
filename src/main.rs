@@ -39,7 +39,7 @@ fn prettylen(len: usize) -> String {
 }
 
 
-fn pretty_print_result(guess: &str, res: nerdle::NerdleResult) {
+fn pretty_print_result(guess: &str, res: &nerdle::NerdleResult) {
     let guess = guess.as_bytes();
     for pos in 0..(nerdle::NERDLE_CHARACTERS as usize) {
         let chs = String::from(guess[pos] as char);
@@ -128,6 +128,7 @@ fn main() -> Result<(), CommandLineError> {
         Some("play") => {
             let answer = eqgen()
                 .expect("Failed to generate equation");
+            let mut won = false;
 
             for turn in 1..=nerdle::NERDLE_TURNS {
                 let mut guess;
@@ -142,12 +143,19 @@ fn main() -> Result<(), CommandLineError> {
                     res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed try again");
                     break;
                 }
-                // TODO: Stop if we have won!
+
                 println!("Turn {} Result: {}", turn, res);
-                pretty_print_result(&guess.to_string(), res);
+                pretty_print_result(&guess.to_string(), &res);
+                if res.won() {
+                    won = true;
+                    println!("You won in {} turns!", turn);
+                    break;
+                }
             }
             println!("Answer: {}", &answer);
-
+            if !won {
+                println!("You lost");
+            }
             Ok(())
         },
 
