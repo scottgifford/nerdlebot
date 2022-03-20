@@ -1,7 +1,7 @@
 use crate::eq::Equation;
 use std::fmt;
 use std::collections::HashMap;
-use crate::nerdle::{NerdleResult, NerdlePositionResult, NERDLE_CHARACTERS};
+use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS};
 use std::cmp::{max};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
@@ -148,6 +148,50 @@ impl NerdleSolver {
                 (*ent).max_count = *count;
             }
         }
+    }
+
+    // TODO: Switch to a better error type
+    pub fn eq_matches(&self, eq: &Equation) -> Result<(), NerdleError> {
+        if !eq.computes().unwrap_or(false) {
+            return Err(NerdleError { message: format!("Equation does not compute")});
+        }
+
+        let eq_str = eq.to_string();
+        let eq_bytes = eq_str.as_bytes();
+        if eq_str.len() != NERDLE_CHARACTERS as usize {
+            return Err(NerdleError { message: format!("Equation as string is too many characters ({} != {})", eq_str.len(), NERDLE_CHARACTERS)});
+        }
+
+        // Check characters in positions
+        for pos in 0..(NERDLE_CHARACTERS as usize) {
+            let guess_ch = eq_bytes[pos];
+            match self.positions[pos].get(&guess_ch) {
+                Some(false) => return Err(NerdleError { message: format!("Position {} cannot be {}", pos, guess_ch as char)}),
+                _ => { }
+            }
+        }
+
+        // Now check counts
+        let mut char_counts = HashMap::new();
+        for &ch in eq_bytes.iter() {
+            let counter = char_counts.entry(ch).or_insert(0);
+            *counter += 1;
+        }
+        for (ch, count) in char_counts.iter() {
+            match self.char_info.get(ch) {
+                Some(info) => {
+                    if count < &info.min_count {
+                        return Err(NerdleError { message: format!("Not enough of character '{}' ({} < {})", *ch as char, count, info.min_count) })
+                    }
+                    if count > &info.max_count {
+                        return Err(NerdleError { message: format!("Too many of character '{}' ({} > {})", *ch as char, count, info.max_count) })
+                    }
+                },
+                None => { }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn print_hint(&self) {

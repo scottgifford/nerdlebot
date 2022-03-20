@@ -178,6 +178,10 @@ fn main() -> Result<(), CommandLineError> {
                     let cleanput = input.trim_end();
                     println!("Read: {}", cleanput);
                     guess = skip_fail!(Equation::from_str(&cleanput), "Invalid equation, try again");
+                    match solver.eq_matches(&guess) {
+                        Ok(()) => println!("Equation is possible"),
+                        Err(why) => println!("Equation is impossible because {}", why)
+                    }
                     res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed try again");
                     break;
                 }
