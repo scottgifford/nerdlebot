@@ -1,7 +1,10 @@
 use crate::eq::Equation;
 use std::fmt;
 use std::collections::HashMap;
+use std::ops::RangeInclusive;
 use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS};
+use crate::eqgen::{eqgen_constrained};
+use crate::constraint::{EquationConstraint, NoMatchFound};
 use std::cmp::{max};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
@@ -83,9 +86,54 @@ impl NerdleSolver {
         }
     }
 
-    // pub fn take_guess(&self) -> Equation {
+    pub fn take_guess(&self) -> Result<Equation, NoMatchFound> {
+        let mut constraint = EquationConstraint::new(|eq| match self.eq_matches(&eq) {
+            Ok(()) => true,
+            Err(_e) => { 
+                // println!("  Equation {} not possible because {}", eq, e);
+                false
+            }
+        });
 
-    // }
+        // TODO: Also set false values
+        match self.op {
+            Some(op) => { constraint.operator.insert(op, true); },
+            _ => {},
+        };
+
+        match self.equal_pos {
+            Some(pos) => {
+                let digits = NERDLE_CHARACTERS as usize - pos - 1;
+                let range = range_for_digits(digits);
+                println!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
+                constraint.c_range = range;
+            },
+            _ => {}
+        };
+
+        match self.op_pos {
+            Some(op_pos) => {
+                let digits = op_pos;
+                let range = range_for_digits(digits);
+                println!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
+                constraint.a_range = range;
+                match self.equal_pos {
+                    Some(equal_pos) => {
+                        let digits = equal_pos - op_pos - 1;
+                        let range = range_for_digits(digits);
+                        println!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
+                        constraint.b_range = range;
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        };
+
+        println!("Constraint: {}", &constraint);
+
+        eqgen_constrained(&constraint)
+    }
 
     pub fn update(&mut self, guess: &Equation, result: &NerdleResult) {
         // let mut state = ParseState::InA;
@@ -299,5 +347,15 @@ impl fmt::Display for NerdleSolver {
 
         // TODO: Create "could be" list
         Ok(())
+    }
+}
+
+fn range_for_digits(digits: usize) -> RangeInclusive<u32> {
+    0..=match digits {
+        1 => 9,
+        2 => 99,
+        3 => 999,
+        4 => 9999,
+        _ => 99999,
     }
 }

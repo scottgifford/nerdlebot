@@ -195,10 +195,53 @@ fn main() -> Result<(), CommandLineError> {
                 }
                 solver.update(&guess, &res);
                 solver.print_hint();
+                match solver.take_guess() {
+                    Ok(bot_guess) => println!("Bot guess: {}", bot_guess),
+                    Err(err) => println!("Bot could not come up with guess: {}", err),
+                }
             }
             println!("Answer: {}", &answer);
             if !won {
                 println!("You lost");
+            }
+            Ok(())
+        },
+        // TODO: Lots of duplicated code
+        Some("solve_random") => {
+            let mut solver = NerdleSolver::new();
+            let answer = eqgen()
+                .expect("Failed to generate equation");
+            println!("Answer: {}", &answer);
+
+            let mut won = false;
+
+            for turn in 1..=nerdle::NERDLE_TURNS {
+                let mut guess;
+                let res;
+                loop {
+                    // println!("Turn {} Enter Guess:", turn);
+                    // let mut input = String::new();
+                    // skip_fail!(io::stdin().read_line(&mut input), "Read error, try again");
+                    // let cleanput = input.trim_end();
+                    // println!("Read: {}", cleanput);
+                    guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
+                    println!("Turn {}  Guess: {}", turn, guess);
+                    res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed, trying again");
+                    break;
+                }
+
+                println!("Turn {} Result: {}", turn, res);
+                pretty_print_result(&guess.to_string(), &res);
+                if res.won() {
+                    won = true;
+                    println!("I won in {} turns!", turn);
+                    break;
+                }
+                solver.update(&guess, &res);
+                solver.print_hint();
+            }
+            if !won {
+                println!("I lost");
             }
             Ok(())
         },

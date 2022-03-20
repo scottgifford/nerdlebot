@@ -3,11 +3,15 @@ use rand::Rng;
 use crate::eq::Equation;
 use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum, mknum, mknump};
 
-use crate::constraint::{find_num_with_constraint, ExpressionNumberConstraint, NoMatchFound};
+use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
 const ATTEMPTS: u32 = 1000;
 
-pub fn eqgen() -> Result<Equation, NoMatchFound> {
+pub fn eqgen_constrained<F>(constraint: &EquationConstraint<F>) -> Result<Equation, NoMatchFound>
+where
+    F: Fn(&Equation) -> bool,
+{
+    // TODO: Is this efficient?  Should this be a global or something?
     let mut rng = rand::thread_rng();
 
     let op: ExpressionOperatorEnum = rand::random();
@@ -89,8 +93,17 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
             continue;
         }
 
+        if !(constraint.accept)(&eq) {
+            // println!("Equation did not match constraint: {}", eq);
+            continue;
+        }
+
         return Ok(eq);
     }
 
     Err(NoMatchFound { message: format!("Failed to generate equation for operator {} after {} attempts", op, ATTEMPTS) })
+}
+
+pub fn eqgen() -> Result<Equation, NoMatchFound> {
+    eqgen_constrained(&EquationConstraint::new(|_| true))
 }
