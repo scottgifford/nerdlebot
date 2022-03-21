@@ -8,6 +8,7 @@ use crate::constraint::{EquationConstraint, NoMatchFound};
 use std::cmp::{max};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
+const OPERATOR_STR: &str = "-+*/";
 
 #[derive(Clone, Debug)]
 pub enum NerdleIsChar {
@@ -95,7 +96,19 @@ impl NerdleSolver {
             }
         });
 
-        // TODO: Also set false values
+        for op in OPERATOR_STR.as_bytes().iter() {
+            match self.op {
+                Some(op2) if *op == op2 => { constraint.operator.insert(*op, true); },
+                Some(_) => { constraint.operator.insert(*op, false); },
+                None => match self.char_info.get(op) {
+                    Some(info) => if info.max_count < 1 {
+                        constraint.operator.insert(*op, false);
+                    },
+                    None => { }
+                },
+            };
+        }
+
         match self.op {
             Some(op) => { constraint.operator.insert(op, true); },
             _ => {},
@@ -132,7 +145,14 @@ impl NerdleSolver {
 
         println!("Constraint: {}", &constraint);
 
-        eqgen_constrained(&constraint)
+        let mut r = eqgen_constrained(&constraint);
+        for _ in 0..100 {
+            if r.is_ok() {
+                return r;
+            }
+            r = eqgen_constrained(&constraint);
+        }
+        r
     }
 
     pub fn update(&mut self, guess: &Equation, result: &NerdleResult) {

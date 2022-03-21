@@ -172,6 +172,10 @@ fn main() -> Result<(), CommandLineError> {
                 let mut guess;
                 let res;
                 loop {
+                    match solver.take_guess() {
+                        Ok(bot_guess) => println!("Bot guess: {}", bot_guess),
+                        Err(err) => println!("Bot could not come up with guess: {}", err),
+                    }
                     println!("Turn {} Enter Guess:", turn);
                     let mut input = String::new();
                     skip_fail!(io::stdin().read_line(&mut input), "Read error, try again");
@@ -195,10 +199,6 @@ fn main() -> Result<(), CommandLineError> {
                 }
                 solver.update(&guess, &res);
                 solver.print_hint();
-                match solver.take_guess() {
-                    Ok(bot_guess) => println!("Bot guess: {}", bot_guess),
-                    Err(err) => println!("Bot could not come up with guess: {}", err),
-                }
             }
             println!("Answer: {}", &answer);
             if !won {
@@ -206,6 +206,7 @@ fn main() -> Result<(), CommandLineError> {
             }
             Ok(())
         },
+
         // TODO: Lots of duplicated code
         Some("solve_random") => {
             let mut solver = NerdleSolver::new();
@@ -245,6 +246,7 @@ fn main() -> Result<(), CommandLineError> {
             }
             Ok(())
         },
+
         Some(oops) => Err(CommandLineError { message: format!("Unrecognized command '{}'", oops) } ),
 
         None => Err(CommandLineError { message: format!("Missing command line flag") } ),

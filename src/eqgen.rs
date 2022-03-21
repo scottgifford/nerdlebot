@@ -5,7 +5,7 @@ use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperat
 
 use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
-const ATTEMPTS: u32 = 1000;
+const ATTEMPTS: u32 = 10000;
 
 pub fn eqgen_constrained<F>(constraint: &EquationConstraint<F>) -> Result<Equation, NoMatchFound>
 where
@@ -14,7 +14,16 @@ where
     // TODO: Is this efficient?  Should this be a global or something?
     let mut rng = rand::thread_rng();
 
-    let op: ExpressionOperatorEnum = rand::random();
+    let op = loop {
+        let tmp_op: ExpressionOperatorEnum = rand::random();
+        let tmp_op_ch = tmp_op.to_string().as_bytes()[0];
+        if !*constraint.operator.get(&tmp_op_ch).unwrap_or(&true) {
+            println!("Rejected operator '{}' because it's been ruled out", tmp_op_ch as char);
+            continue;
+        }
+        println!("Accepted operator '{}'", tmp_op_ch as char);
+        break tmp_op;
+    };
 
     for _try in 1..ATTEMPTS {
         let mut chars_remaining: i32 = 10 - 1 /* for = */ -1 /* for operator chosen above */;
