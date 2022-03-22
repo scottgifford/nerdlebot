@@ -18,10 +18,10 @@ where
         let tmp_op: ExpressionOperatorEnum = rand::random();
         let tmp_op_ch = tmp_op.to_string().as_bytes()[0];
         if !*constraint.operator.get(&tmp_op_ch).unwrap_or(&true) {
-            println!("Rejected operator '{}' because it's been ruled out", tmp_op_ch as char);
+            // println!("Rejected operator '{}' because it's been ruled out", tmp_op_ch as char);
             continue;
         }
-        println!("Accepted operator '{}'", tmp_op_ch as char);
+        // println!("Accepted operator '{}'", tmp_op_ch as char);
         break tmp_op;
     };
 
