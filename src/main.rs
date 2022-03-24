@@ -228,6 +228,10 @@ fn main() -> Result<(), CommandLineError> {
                     loop {
                         guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
                         println!("Turn {}  Guess: {}", turn, guess);
+                        match solver.eq_matches(&guess) {
+                            Ok(()) => println!("Equation is possible"),
+                            Err(why) => println!("Equation is impossible because {}", why)
+                        }
                         res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed, trying again");
                         break;
                     }

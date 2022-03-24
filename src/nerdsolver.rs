@@ -1,11 +1,13 @@
-use crate::eq::Equation;
 use std::fmt;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
+use std::cmp::{max};
+
+use crate::eq::Equation;
+use crate::expr::{ExpressionPart};
 use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS};
 use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, NoMatchFound};
-use std::cmp::{max};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
 const OPERATOR_STR: &str = "-+*/";
@@ -172,6 +174,11 @@ impl NerdleSolver {
             match result.positions[i] {
                 NerdlePositionResult::Green => {
                     self.positions[i].insert(guess_ch, true);
+                    for ch in VALID_CHAR_STR.as_bytes().iter() {
+                        if *ch != guess_ch {
+                            self.positions[i].insert(*ch, false);
+                        }
+                    }
                     (*char_info).positions[i] = NerdleIsChar::Definitely;
                     *counter += 1
                 },
@@ -239,6 +246,27 @@ impl NerdleSolver {
             }
         }
 
+        // Check the operator
+        match self.op {
+            Some(op) => {
+                match eq.expr.parts.iter().find(|x| match x {
+                    ExpressionPart::Operator(_) => true,
+                    _ => false
+                }) {
+                    Some(eq_op) => {
+                        // TODO: Seems hacky
+                        let eq_op_str = eq_op.to_string();
+                        if (op as char).to_string() != eq_op_str {
+                            println!("Rejecting based on operator, got {} but expected {}", eq_op_str, op.to_string());
+                            return Err(NerdleError { message: format!("Equation had operator {} but expected {}", eq_op_str, op.to_string())});
+                        }
+                    }
+                    None => return Err(NerdleError { message: format!("Equation had no operator somehow?!")})
+                }
+            }
+            None => { }
+        }
+
         // Now check counts
         let mut char_counts = HashMap::new();
         for &ch in eq_bytes.iter() {
@@ -302,38 +330,69 @@ impl NerdleSolver {
 
         for pos in 0..(NERDLE_CHARACTERS as usize) {
             print!("Position {} ", pos);
-            match self.positions[pos].iter().find_map(|(key, value)| if *value { Some(key) } else { None }) {
-                Some(known) => print!(" is {}", *known as char),
-                None => {
-                    print!(" could be: ");
-                    for ch in VALID_CHAR_STR.as_bytes().iter() {
-                        if match *ch as char {
-                            '=' => self.equal_pos == None,
-                            '+' | '-' | '*' | '/' => self.op_pos == None,
-                            _ => match self.char_info.get(ch) {
-                                Some(info) => match info.positions[pos] {
-                                    NerdleIsChar::Maybe => {
-                                        match self.char_info.get(ch) {
-                                            Some(info) => {
-                                                let known = known_pos.get(ch).unwrap_or(&0);
-                                                // println!("  ch {} pos {} known {} info {}", *ch as char, pos, known, info);
-                                                known < &info.max_count
-                                            },
-                                            None => true,
-                                        }
-                                    },
-                                    _ => false
-                                },
-                                None => true
-                            }
-                        } {
-                            print!("{} ", *ch as char);
-                        }
-                    }        
-                }
+            let poss = self.possibilities_for_pos(pos);
+            match poss.len() {
+                0 => print!("NO POSSIBILITIES?!"),
+                1 => print!("is"),
+                _ => print!("could be")
+            }
+            let mut sorted: Vec<&u8> = poss.iter().collect::<Vec<_>>();
+            sorted.sort();
+            for p in sorted.iter() {
+                print!(" {}", **p as char);
             }
             print!("\n");
         }
+    }
+
+    fn possibilities_for_pos(&self, pos: usize) -> HashSet<u8> {
+        // TODO: Move to state or something?  Or maybe this should be done up update() to pre-calculate all this?
+        let mut known_pos: HashMap<u8, u32> = HashMap::new();
+        for (key, val) in self.char_info.iter() {
+            known_pos.insert(*key, val.positions.iter().fold(0, |sum, status| sum + match status {
+                NerdleIsChar::Definitely => 1,
+                _ => 0
+            }));
+        }
+
+        let mut ret = HashSet::new();
+        match self.positions[pos].iter().find_map(|(key, value)| if *value { Some(key) } else { None }) {
+            Some(known) => { ret.insert(*known); },
+            None => {
+                for ch in VALID_CHAR_STR.as_bytes().iter() {
+                    let info: Option<&NerdleCharInfo> = self.char_info.get(&ch);
+                    let known_ch_count = known_pos.get(ch).unwrap_or(&0);
+                    let max_ch_count = info.map(|x| x.max_count).unwrap_or(NERDLE_CHARACTERS);
+                    if known_ch_count >= &max_ch_count {
+                        continue;
+                    }
+                    let char_pos_info = info.map(|x| &x.positions[pos]).unwrap_or(&NerdleIsChar::Maybe);
+                    // println!("  ch {} pos {} known {} info {}", *ch as char, pos, known, info);         
+                    if match char_pos_info {
+                        NerdleIsChar::Definitely => true, // Should never happen
+                        NerdleIsChar::DefinitelyNot => false,
+                        NerdleIsChar::Maybe => match *ch as char {
+                            '=' => self.equal_pos == None,
+                            '+' | '-' | '*' | '/' => match self.op {
+                                None => true,
+                                Some(x) if x == *ch => match self.op_pos {
+                                    None => true,
+                                    Some(y) if y == pos => true,
+                                    Some(_) => false,
+                                }
+                                Some(_) => false,
+                            },
+                            '0'..='9' => true,
+                            _ => panic!("Unexpected character '{}'", *ch)
+                        }
+                    } {
+                        ret.insert(*ch);
+                    }
+                };
+            }
+        }
+
+        ret
     }
 }
 
