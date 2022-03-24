@@ -121,6 +121,7 @@ impl NerdleSolver {
                 let digits = NERDLE_CHARACTERS as usize - pos - 1;
                 let range = range_for_digits(digits);
                 println!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
+                // TODO: Also add a callback with a regex of acceptable characters
                 constraint.c_range = range;
             },
             _ => {}
@@ -130,12 +131,14 @@ impl NerdleSolver {
             Some(op_pos) => {
                 let digits = op_pos;
                 let range = range_for_digits(digits);
+                // TODO: Also add a callback with a regex of acceptable characters
                 println!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
                 constraint.a_range = range;
                 match self.equal_pos {
                     Some(equal_pos) => {
                         let digits = equal_pos - op_pos - 1;
                         let range = range_for_digits(digits);
+                        // TODO: Also add a callback with a regex of acceptable characters
                         println!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
                         constraint.b_range = range;
                     },
