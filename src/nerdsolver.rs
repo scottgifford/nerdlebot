@@ -433,11 +433,11 @@ impl fmt::Display for NerdleSolver {
 }
 
 fn range_for_digits(digits: usize) -> RangeInclusive<u32> {
-    0..=match digits {
-        1 => 9,
-        2 => 99,
-        3 => 999,
-        4 => 9999,
-        _ => 99999,
+    match digits {
+        1 => 1..=9,
+        2 => 10..=99,
+        3 => 100..=999,
+        4 => 1000..=9999,
+        _ => 1..=99999,
     }
 }
