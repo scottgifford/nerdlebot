@@ -1,5 +1,6 @@
-// TODO: Which of these do we need?
 use std::fmt;
+use std::rc::Rc;
+use std::cmp::{min, max};
 use rand::Rng;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
@@ -9,28 +10,35 @@ use crate::eq::{Equation};
 
 const ATTEMPTS: u32 = 1000;
 
-pub struct ExpressionNumberConstraint<F>
-where
-    F: Fn(&ExpressionNumber) -> bool,
+pub struct ExpressionNumberConstraint
 {
     pub range: RangeInclusive<u32>,
     pub description: String,
-    pub accept: F,
+    pub accept: Rc<dyn Fn(&ExpressionNumber) -> bool>,
 }
 
-impl<F> fmt::Display for ExpressionNumberConstraint<F>
-where
-    F: Fn(&ExpressionNumber) -> bool,
+impl ExpressionNumberConstraint {
+    pub fn intersect(a: &ExpressionNumberConstraint, b: &ExpressionNumberConstraint) -> ExpressionNumberConstraint {
+        let a_accept = a.accept.clone();
+        let b_accept = b.accept.clone();
+        ExpressionNumberConstraint {
+            range: range_intersect(&a.range, &b.range),
+            description: format!("{} & {}", &a.description, &b.description),
+            accept: Rc::new(move |n| {
+                (a_accept)(n) && (b_accept)(n)
+            }),
+        }
+    }
+}
+
+impl fmt::Display for ExpressionNumberConstraint
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ExpressionNumberConstraint \"{}\": range={}..={}", self.description, self.range.start(), self.range.end())
     }
 }
 
-
-pub fn find_num_with_constraint<F>(rng: &mut impl Rng, constraint: &ExpressionNumberConstraint<F>) -> Result<ExpressionNumber, NoMatchFound>
-where
-    F: Fn(&ExpressionNumber) -> bool,
+pub fn find_num_with_constraint(rng: &mut impl Rng, constraint: &ExpressionNumberConstraint) -> Result<ExpressionNumber, NoMatchFound>
 {
     if constraint.range.is_empty() {
         return Err(NoMatchFound { message: format!("Invalid range in constraint: {}", constraint)});
@@ -52,6 +60,7 @@ pub struct EquationConstraint<F>
     where F: Fn(&Equation) -> bool,
 {
     pub accept: F,
+    // TODO: Convert below to ExpressionNumberConstraint
     pub a_range: RangeInclusive<u32>,
     pub b_range: RangeInclusive<u32>,
     pub c_range: RangeInclusive<u32>,
@@ -114,4 +123,20 @@ impl fmt::Debug for NoMatchFound {
         // TODO: Line and file are this one, not caller?!
         write!(f, "NoMatchFound: {} at {{ file: {}, line: {} }}", self.message, file!(), line!()) // programmer-facing output
     }
+}
+
+pub fn range_intersect<T>(a: &RangeInclusive<T>, b: &RangeInclusive<T>) -> RangeInclusive<T>
+    where T: Ord + Copy,
+{
+    RangeInclusive::new(*max(a.start(), b.start()), *min(a.end(), b.end()))
+}
+
+
+#[cfg(test)]
+#[test]
+fn range_intersect_test() {
+    assert_eq!(range_intersect(&(0..=1), &(0..=1)), 0..=1);
+    assert_eq!(range_intersect(&(0..=10), &(5..=15)), 5..=10);
+    assert_eq!(range_intersect(&(0..=10), &(10..=15)), 10..=10);
+    assert!(range_intersect(&(0..=10), &(15..=20)).is_empty());
 }
