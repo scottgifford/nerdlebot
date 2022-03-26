@@ -7,7 +7,7 @@ use crate::eq::Equation;
 use crate::expr::{ExpressionPart};
 use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS};
 use crate::eqgen::{eqgen_constrained};
-use crate::constraint::{EquationConstraint, NoMatchFound};
+use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
 const OPERATOR_STR: &str = "-+*/";
@@ -120,9 +120,13 @@ impl NerdleSolver {
             Some(pos) => {
                 let digits = NERDLE_CHARACTERS as usize - pos - 1;
                 let range = range_for_digits(digits);
-                println!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
+                let description = format!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
                 // TODO: Also add a callback with a regex of acceptable characters
-                constraint.c_range = range;
+                constraint.c_range = ExpressionNumberConstraint {
+                    range,
+                    description,
+                    ..Default::default()
+                };
             },
             _ => {}
         };
@@ -132,15 +136,23 @@ impl NerdleSolver {
                 let digits = op_pos;
                 let range = range_for_digits(digits);
                 // TODO: Also add a callback with a regex of acceptable characters
-                println!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
-                constraint.a_range = range;
+                let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
+                constraint.a_range = ExpressionNumberConstraint {
+                    range,
+                    description,
+                    ..Default::default()
+                };
                 match self.equal_pos {
                     Some(equal_pos) => {
                         let digits = equal_pos - op_pos - 1;
                         let range = range_for_digits(digits);
                         // TODO: Also add a callback with a regex of acceptable characters
-                        println!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
-                        constraint.b_range = range;
+                        let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
+                        constraint.b_range = ExpressionNumberConstraint {
+                            range,
+                            description,
+                            ..Default::default()
+                        };
                     },
                     _ => {}
                 }

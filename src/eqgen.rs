@@ -1,7 +1,4 @@
-use rand::Rng;
 use std::rc::Rc;
-use std::cmp::{min, max};
-use std::ops::RangeInclusive;
 
 use crate::eq::Equation;
 use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum, mknum, mknump};
@@ -32,19 +29,27 @@ where
         ExpressionOperatorEnum::Times => 1024..=9801, // 32*32 to 99*99, other values won't have 10 digits
         _ => 1..=999
     };
-    let c_range = range_intersect(&c_init_range, &constraint.c_range);
-    // println!("Calculated op {} range {}..={} INTERSECT {}..={} = {}..={}", &op, c_init_range.start(), c_init_range.end(), constraint.c_range.start(), constraint.c_range.end(), c_range.start(), c_range.end());
+    let description = format!("range {}..={}", c_init_range.start(), c_init_range.end());
+    let c_init_constraint = ExpressionNumberConstraint {
+        range: c_init_range,
+        description,
+        ..Default::default()
+    };
+    let c_constraint = ExpressionNumberConstraint::intersect(&c_init_constraint, &constraint.c_range);
 
-    if c_range.is_empty() {
+    // TODO: Make this a method
+    if c_constraint.range.is_empty() {
         // Give up immediately, our constraints make this impossible
         // println!("Impossible constraints on c_range, giving up");
-        return Err(NoMatchFound { message: format!("No valid values for c, with operator {}, initial range {}..={}, constraint range {}..={}", &op, c_init_range.start(), c_init_range.end(), constraint.c_range.start(), constraint.c_range.end()) })
+        return Err(NoMatchFound { message: format!("No valid values for c, with operator {}, constraint {}", &op, c_constraint) })
     }
 
     for _try in 1..ATTEMPTS {
         let chars_remaining: i32 = 10 - 1 /* for = */ -1 /* for operator chosen above */;
 
-        let c = rng.gen_range(c_range.clone());
+        // TODO: Make this a method?
+        let c = find_num_with_constraint(&mut rng, &c_constraint)?;
+        let c = c.value;
         let c_obj = mknum(c);
         // println!("Searching for solution for op {} and c {}", op, c_obj);
         let chars_remaining = chars_remaining - c_obj.len() as i32;
@@ -53,12 +58,30 @@ where
         let accept = move |n: &ExpressionNumber| n.len() as i32 <= (chars_remaining - 1);
         let describer = | | format!("chars < {}", (chars_remaining - chars_reserved));
 
-        let a_obj = match op {
-            ExpressionOperatorEnum::Plus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: range_intersect(&(0..=c), &constraint.a_range), description: describer(), accept: Rc::new(accept) }),
-            ExpressionOperatorEnum::Minus => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint{ range: range_intersect(&(c..=999), &constraint.a_range), description: describer(), accept: Rc::new(accept) }),
-            ExpressionOperatorEnum::Times => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: range_intersect(&(1..=c/2), &constraint.a_range), description: describer(), accept: Rc::new(move |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n)) }),
-            ExpressionOperatorEnum::Divide => find_num_with_constraint(&mut rng, &ExpressionNumberConstraint { range: range_intersect(&(1..=c*c), &constraint.a_range), description: describer(), accept: Rc::new(move |n| n.value % c == 0 && accept(n)) }),
+        let a_init_constraint = match op {
+            ExpressionOperatorEnum::Plus => ExpressionNumberConstraint { 
+                range: 0..=c,
+                description: describer(),
+                accept: Rc::new(accept),
+            },
+            ExpressionOperatorEnum::Minus => ExpressionNumberConstraint{
+                range: c..=999,
+                description: describer(),
+                accept: Rc::new(accept)
+            },
+            ExpressionOperatorEnum::Times => ExpressionNumberConstraint {
+                range: 1..=c/2,
+                description: describer(),
+                accept: Rc::new(move |n| c % n.value == 0 && mknum(c/n.value).len() + n.len() == chars_remaining as usize && accept(n)),
+            },
+            ExpressionOperatorEnum::Divide => ExpressionNumberConstraint {
+                range: 1..=c*c,
+                description: describer(),
+                accept: Rc::new(move |n| n.value % c == 0 && accept(n)),
+            },
         };
+        let a_constraint = ExpressionNumberConstraint::intersect(&a_init_constraint, &constraint.a_range);
+        let a_obj = find_num_with_constraint(&mut rng, &a_constraint);
         let a_obj = match a_obj {
             Ok(a) => a,
             Err(_err) => continue,
@@ -128,20 +151,4 @@ where
 
 pub fn eqgen() -> Result<Equation, NoMatchFound> {
     eqgen_constrained(&EquationConstraint::new(|_| true))
-}
-
-// TODO: Delete, moved to constraint.rs
-pub fn range_intersect<T>(a: &RangeInclusive<T>, b: &RangeInclusive<T>) -> RangeInclusive<T>
-    where T: Ord + Copy,
-{
-    RangeInclusive::new(*max(a.start(), b.start()), *min(a.end(), b.end()))
-}
-
-#[cfg(test)]
-#[test]
-fn range_intersect_test() {
-    assert_eq!(range_intersect(&(0..=1), &(0..=1)), 0..=1);
-    assert_eq!(range_intersect(&(0..=10), &(5..=15)), 5..=10);
-    assert_eq!(range_intersect(&(0..=10), &(10..=15)), 10..=10);
-    assert!(range_intersect(&(0..=10), &(15..=20)).is_empty());
 }

@@ -9,6 +9,12 @@ use crate::expr::{ExpressionNumber, mknum};
 use crate::eq::{Equation};
 
 const ATTEMPTS: u32 = 1000;
+const DEFAULT_RANGE: RangeInclusive<u32> = 0..=9999;
+
+thread_local! {
+    // Must be thread_local because Rc is not threadsafe
+    static ACCEPT_ANY_EXPRESSION_NUMBER_RC: Rc<dyn Fn(&ExpressionNumber) -> bool> = Rc::new(|_| true);
+}
 
 pub struct ExpressionNumberConstraint
 {
@@ -28,6 +34,16 @@ impl ExpressionNumberConstraint {
                 (a_accept)(n) && (b_accept)(n)
             }),
         }
+    }
+}
+
+impl Default for ExpressionNumberConstraint {
+    fn default() -> Self {
+        ACCEPT_ANY_EXPRESSION_NUMBER_RC.with(|accept_anything| Self {
+            range: DEFAULT_RANGE.clone(),
+            description: format!("Default range: {}..{}", DEFAULT_RANGE.start(), DEFAULT_RANGE.end()),
+            accept: accept_anything.clone(),
+        })
     }
 }
 
@@ -59,11 +75,11 @@ pub fn find_num_with_constraint(rng: &mut impl Rng, constraint: &ExpressionNumbe
 pub struct EquationConstraint<F>
     where F: Fn(&Equation) -> bool,
 {
+    // This cannot be an Rc like in ExpressionNumberConstraint because NerdleSolver uses it to call a method, and the method requires capturing NerdleSolver's &self
     pub accept: F,
-    // TODO: Convert below to ExpressionNumberConstraint
-    pub a_range: RangeInclusive<u32>,
-    pub b_range: RangeInclusive<u32>,
-    pub c_range: RangeInclusive<u32>,
+    pub a_range: ExpressionNumberConstraint,
+    pub b_range: ExpressionNumberConstraint,
+    pub c_range: ExpressionNumberConstraint,
     pub operator: HashMap<u8, bool>,
 }
 
@@ -73,16 +89,12 @@ impl<F> EquationConstraint<F>
     pub fn new(accept: F) -> EquationConstraint<F> {
         EquationConstraint {
             accept,
-            a_range: 0..=99999,
-            b_range: 0..=99999,
-            c_range: 0..=99999,
+            a_range: ExpressionNumberConstraint::default(),
+            b_range: ExpressionNumberConstraint::default(),
+            c_range: ExpressionNumberConstraint::default(),
             operator: HashMap::new(),
         }
     }
-}
-
-pub fn write_formatted_range(f: &mut fmt::Formatter, range: &RangeInclusive<u32>) -> fmt::Result {
-    write!(f, "{}..={}", range.start(), range.end())
 }
 
 impl<F> fmt::Display for EquationConstraint<F>
@@ -98,12 +110,7 @@ impl<F> fmt::Display for EquationConstraint<F>
         }
         write!(f, ")")?;
 
-        write!(f, ", a: ")?;
-        write_formatted_range(f, &self.a_range)?;
-        write!(f, ", b:")?;
-        write_formatted_range(f, &self.b_range)?;
-        write!(f, ", c:")?;
-        write_formatted_range(f, &self.c_range)
+        write!(f, ", a: {}, b: {}, c: {}", &self.a_range, &self.b_range, &self.c_range)
     }
 }
 
