@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use rand::Rng;
 
 use crate::eq::Equation;
 use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX, NERDLE_C_MUL_MIN, NERDLE_C_MUL_MAX, NERDLE_C_OTHER_MIN, NERDLE_C_OTHER_MAX};
@@ -163,37 +164,51 @@ pub fn eqgen_3_operands_constrained(constraint: &EquationConstraint) -> Result<E
     let mut rng = rand::thread_rng();
 
     for _try in 1..ATTEMPTS {
+        let mut parts: Vec<ExpressionPart> = Vec::new();
+        let extra_ops = if constraint.max_ops > 1 {
+            rng.gen_range(0..constraint.max_ops)
+        } else {
+            0
+        };
+        println!("Trying with {} extra operators", extra_ops);
+        let operand_range = if extra_ops < 1 {
+            1..=99 // TODO: Is this right?  Maybe not for all operators?
+        } else {
+            1..=9
+        };
+
         let a_base_constraint = ExpressionNumberConstraint {
-            range: 1..=9,
+            range: operand_range.clone(),
             description: format!("1..=9"),
             ..Default::default()
         };
         let a = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint))?;
+        parts.push(ExpressionPart::Number(a));
+
+        let op1 = gen_operator_constrained(constraint);
+        parts.push(op2op(&op1));
 
         let b_base_constraint = ExpressionNumberConstraint {
-            range: 1..=9,
+            range: operand_range.clone(),
             description: format!("1..=9"),
             ..Default::default()
         };
         let b = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint))?;
+        parts.push(ExpressionPart::Number(b));
 
-        let b2_base_constraint = ExpressionNumberConstraint {
-            range: 1..=9,
-            description: format!("1..=9"),
-            ..Default::default()
-        };
-        let b2 = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
+        for _i in 0..extra_ops {
+            let op2 = gen_operator_constrained(constraint);
+            parts.push(op2op(&op2));
 
-        let op1 = gen_operator_constrained(constraint);
-        let op2 = gen_operator_constrained(constraint);
+            let b2_base_constraint = ExpressionNumberConstraint {
+                range: 1..=9,
+                description: format!("1..=9"),
+                ..Default::default()
+            };
+            let b2 = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
+            parts.push(ExpressionPart::Number(b2));
+        }
 
-        let parts: Vec<ExpressionPart> = Vec::from([
-            ExpressionPart::Number(a),
-            op2op(&op1),
-            ExpressionPart::Number(b),
-            op2op(&op2),
-            ExpressionPart::Number(b2),
-        ]);
         let expr = Expression { parts };
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
         if (expr.len() + res.len() + 1) != NERDLE_CHARACTERS as usize {
@@ -223,7 +238,10 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
 }
 
 pub fn eqgen_3_operands() -> Result<Equation, NoMatchFound> {
-    eqgen_3_operands_constrained(&EquationConstraint::default())
+    eqgen_3_operands_constrained(&EquationConstraint {
+        max_ops: 2,
+        ..Default::default()
+    })
 }
 
 
