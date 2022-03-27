@@ -107,6 +107,17 @@ fn main() -> Result<(), CommandLineError> {
             Ok(())
         },
 
+        Some("gen3") => {
+            let eq = eqgen::eqgen_3_operands()
+                .expect("Failed to generate equation");
+            println!("Equation: {}", &eq);
+            println!("  Length: {}", prettylen(eq.len()));
+            let res = eq.computes()
+                .expect("Failed to compute expression");
+            println!("Equation Computes: {}", res);
+            Ok(())
+        },
+
         Some("eval") => {
             let answer = std::env::args().nth(2)
                 .expect("no expr given in arg 2");

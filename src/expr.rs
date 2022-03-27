@@ -68,7 +68,7 @@ impl Expression {
                                 match cur {
                                     Some(cur2) => {
                                         op = None;
-                                        Some(op2.operate(&cur2, num))
+                                        Some(op2.operate(&cur2, num)?)
                                     }
                                     None => return Err(InvalidExpressionError { message: format!("Operator missing first operand somehow L67") }),
                                 }
@@ -215,7 +215,7 @@ impl fmt::Display for ExpressionOperatorEnum {
 
 
 pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Display + fmt::Debug {
-    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber;
+    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError>;
     fn len(&self) -> usize {
         1
     }
@@ -261,10 +261,11 @@ impl ExpressionOperator for ExpressionOperatorPlus {
         1
     }
 
-    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
-        return ExpressionNumber {
-            value: a.value + b.value,
-        };
+    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
+        let value = a.value.checked_add(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} + {}", a, b)} )?;
+        Ok(ExpressionNumber {
+            value,
+        })
     }
 }
 
@@ -285,10 +286,11 @@ impl ExpressionOperator for ExpressionOperatorMinus {
     }
 
 
-    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
-        return ExpressionNumber {
-            value: a.value - b.value,
-        };
+    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
+        let value = a.value.checked_sub(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} - {}", a, b)} )?;
+        Ok(ExpressionNumber {
+            value,
+        })
     }
 }
 
@@ -307,10 +309,11 @@ impl ExpressionOperator for ExpressionOperatorTimes {
         0
     }
 
-    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
-        return ExpressionNumber {
-            value: a.value * b.value,
-        };
+    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
+        let value = a.value.checked_mul(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} * {}", a, b)} )?;
+        Ok(ExpressionNumber {
+            value,
+        })
     }
 }
 
@@ -330,10 +333,15 @@ impl ExpressionOperator for ExpressionOperatorDivide {
         0
     }
 
-    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> ExpressionNumber {
-        return ExpressionNumber {
-            value: a.value / b.value,
-        };
+    fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
+        let rem = a.value.checked_rem(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} / {}", a, b)} )?;
+        if rem != 0 {
+            return Err(InvalidExpressionError { message: format!("Found remainder in {} / {}", a, b)})
+        }
+        let value = a.value.checked_div(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} / {}", a, b)} )?;
+        Ok(ExpressionNumber {
+            value,
+        })
     }
 }
 

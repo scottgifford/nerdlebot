@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use rand::Rng;
 
 use crate::eq::Equation;
 use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX, NERDLE_C_MUL_MIN, NERDLE_C_MUL_MAX, NERDLE_C_OTHER_MIN, NERDLE_C_OTHER_MAX};
@@ -147,6 +148,60 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
     Err(NoMatchFound { message: format!("Failed to generate equation for operator {} after {} attempts", op, ATTEMPTS) })
 }
 
+// TODO: CopyPasta from main.rs
+macro_rules! skip_fail {
+    ($res:expr, $message:expr) => {
+        match $res {
+            Ok(val) => val,
+            Err(_e) => {
+                // println!("{} (Error {})", $message, e);
+                continue;
+            }
+        }
+    };
+}
+
+pub fn eqgen_3_operands() -> Result<Equation, NoMatchFound> {
+    let mut rng = rand::thread_rng();
+
+    for _try in 1..ATTEMPTS {
+        let a = rng.gen_range(1..=9);
+        let b = rng.gen_range(1..=9);
+        let b2 = rng.gen_range(1..=9);
+        let op1: ExpressionOperatorEnum = rand::random();
+        let op2: ExpressionOperatorEnum = rand::random();
+
+        let expr = Expression { parts: Vec::from([
+            mknump(a),
+            op2op(&op1),
+            mknump(b),
+            op2op(&op2),
+            mknump(b2),
+        ])};
+        let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
+        if (expr.len() + res.len() + 1) != NERDLE_CHARACTERS as usize {
+            continue;
+        }
+        return Ok(Equation {
+            expr,
+            res,
+        });
+    }
+
+    Err(NoMatchFound { message: format!("Failed to generate equation after {} attempts", ATTEMPTS) })
+}
+
+fn op2op (op: &ExpressionOperatorEnum) -> ExpressionPart {
+    let op: Box<dyn ExpressionOperator> = match &op {
+        ExpressionOperatorEnum::Plus => Box::new(ExpressionOperatorPlus { }),
+        ExpressionOperatorEnum::Minus => Box::new(ExpressionOperatorMinus { }),
+        ExpressionOperatorEnum::Times => Box::new(ExpressionOperatorTimes { }),
+        ExpressionOperatorEnum::Divide => Box::new(ExpressionOperatorDivide { }),
+    };
+    ExpressionPart::Operator(op)
+}
+
 pub fn eqgen() -> Result<Equation, NoMatchFound> {
     eqgen_constrained(&EquationConstraint::default())
 }
+
