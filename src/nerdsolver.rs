@@ -55,12 +55,6 @@ impl fmt::Display for NerdleCharInfo {
     }
 }
 
-// enum ParseState {
-//     InA,
-//     InB,
-//     InC,
-// }
-
 struct NerdleSolverData {
     pub char_info: HashMap<u8, NerdleCharInfo>,
     pub positions: [HashMap<u8, bool>; NERDLE_CHARACTERS as usize],
