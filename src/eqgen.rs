@@ -7,9 +7,7 @@ use crate::constraint::{find_num_with_constraint, EquationConstraint, Expression
 
 const ATTEMPTS: u32 = 10000;
 
-pub fn eqgen_constrained<F>(constraint: &EquationConstraint<F>) -> Result<Equation, NoMatchFound>
-where
-    F: Fn(&Equation) -> bool,
+pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, NoMatchFound>
 {
     // TODO: Is this efficient?  Should this be a global or something?
     let mut rng = rand::thread_rng();
@@ -150,5 +148,5 @@ where
 }
 
 pub fn eqgen() -> Result<Equation, NoMatchFound> {
-    eqgen_constrained(&EquationConstraint::new(|_| true))
+    eqgen_constrained(&EquationConstraint::default())
 }

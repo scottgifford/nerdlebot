@@ -14,6 +14,7 @@ const DEFAULT_RANGE: RangeInclusive<u32> = 0..=9999;
 thread_local! {
     // Must be thread_local because Rc is not threadsafe
     static ACCEPT_ANY_EXPRESSION_NUMBER_RC: Rc<dyn Fn(&ExpressionNumber) -> bool> = Rc::new(|_| true);
+    static ACCEPT_ANY_EQUATION_RC: Rc<dyn Fn(&Equation) -> bool> = Rc::new(|_| true);
 }
 
 pub struct ExpressionNumberConstraint
@@ -72,34 +73,28 @@ pub fn find_num_with_constraint(rng: &mut impl Rng, constraint: &ExpressionNumbe
     Err(NoMatchFound { message: format!("No match found for constraint {} after {} tries", constraint, ATTEMPTS)})
 }
 
-pub struct EquationConstraint<F>
-    where F: Fn(&Equation) -> bool,
+pub struct EquationConstraint
 {
-    // This cannot be an Rc like in ExpressionNumberConstraint because NerdleSolver uses it to call a method, and the method requires capturing NerdleSolver's &self
-    pub accept: F,
+    pub accept: Rc<dyn Fn(&Equation) -> bool>,
     pub a_range: ExpressionNumberConstraint,
     pub b_range: ExpressionNumberConstraint,
     pub c_range: ExpressionNumberConstraint,
     pub operator: HashMap<u8, bool>,
 }
 
-impl<F> EquationConstraint<F>
-    where F: Fn(&Equation) -> bool,
-{
-    pub fn new(accept: F) -> EquationConstraint<F> {
-        EquationConstraint {
-            accept,
+impl Default for EquationConstraint {
+    fn default() -> Self {
+        ACCEPT_ANY_EQUATION_RC.with(|accept_anything| Self {
+            accept: accept_anything.clone(),
             a_range: ExpressionNumberConstraint::default(),
             b_range: ExpressionNumberConstraint::default(),
             c_range: ExpressionNumberConstraint::default(),
             operator: HashMap::new(),
-        }
+        })
     }
 }
 
-impl<F> fmt::Display for EquationConstraint<F>
-    where F: Fn(&Equation) -> bool,
-{
+impl fmt::Display for EquationConstraint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Operator is {} and is not: (", self.operator.iter().find(|(_key, ent)| **ent).map(|(key, _ent)| *key as char).unwrap_or('?'))?;
         for (key, ent) in self.operator.iter() {
