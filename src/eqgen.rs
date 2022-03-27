@@ -33,12 +33,12 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         description,
         ..Default::default()
     };
-    let c_constraint = ExpressionNumberConstraint::intersect(&c_init_constraint, &constraint.c_range);
+    let c_constraint = ExpressionNumberConstraint::intersect(&c_init_constraint, &constraint.c_constraint);
 
     // TODO: Make this a method
     if c_constraint.range.is_empty() {
         // Give up immediately, our constraints make this impossible
-        // println!("Impossible constraints on c_range, giving up");
+        // println!("Impossible constraints on c_constraint, giving up");
         return Err(NoMatchFound { message: format!("No valid values for c, with operator {}, constraint {}", &op, c_constraint) })
     }
 
@@ -78,7 +78,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
                 accept: Rc::new(move |n| n.value % c == 0 && accept(n)),
             },
         };
-        let a_constraint = ExpressionNumberConstraint::intersect(&a_init_constraint, &constraint.a_range);
+        let a_constraint = ExpressionNumberConstraint::intersect(&a_init_constraint, &constraint.a_constraint);
         let a_obj = find_num_with_constraint(&mut rng, &a_constraint);
         let a_obj = match a_obj {
             Ok(a) => a,

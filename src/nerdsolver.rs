@@ -185,7 +185,7 @@ impl NerdleSolver {
                 let range = range_for_digits(digits);
                 let description = format!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
                 // TODO: Also add a callback with a regex of acceptable characters
-                constraint.c_range = ExpressionNumberConstraint {
+                constraint.c_constraint = ExpressionNumberConstraint {
                     range,
                     description,
                     ..Default::default()
@@ -200,7 +200,7 @@ impl NerdleSolver {
                 let range = range_for_digits(digits);
                 // TODO: Also add a callback with a regex of acceptable characters
                 let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
-                constraint.a_range = ExpressionNumberConstraint {
+                constraint.a_constraint = ExpressionNumberConstraint {
                     range,
                     description,
                     ..Default::default()
@@ -211,7 +211,7 @@ impl NerdleSolver {
                         let range = range_for_digits(digits);
                         // TODO: Also add a callback with a regex of acceptable characters
                         let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
-                        constraint.b_range = ExpressionNumberConstraint {
+                        constraint.b_constraint = ExpressionNumberConstraint {
                             range,
                             description,
                             ..Default::default()

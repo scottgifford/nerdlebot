@@ -5,7 +5,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
-use crate::nerdle::{NERDLE_NUM_MAX};
+use crate::nerdle::{NERDLE_NUM_MAX, NERDLE_MAX_OPS};
 use crate::expr::{ExpressionNumber, mknum};
 use crate::eq::{Equation};
 
@@ -77,20 +77,22 @@ pub fn find_num_with_constraint(rng: &mut impl Rng, constraint: &ExpressionNumbe
 pub struct EquationConstraint
 {
     pub accept: Rc<dyn Fn(&Equation) -> bool>,
-    pub a_range: ExpressionNumberConstraint,
-    pub b_range: ExpressionNumberConstraint,
-    pub c_range: ExpressionNumberConstraint,
+    pub a_constraint: ExpressionNumberConstraint,
+    pub b_constraint: ExpressionNumberConstraint,
+    pub c_constraint: ExpressionNumberConstraint,
     pub operator: HashMap<u8, bool>,
+    pub max_ops: u32,
 }
 
 impl Default for EquationConstraint {
     fn default() -> Self {
         ACCEPT_ANY_EQUATION_RC.with(|accept_anything| Self {
             accept: accept_anything.clone(),
-            a_range: ExpressionNumberConstraint::default(),
-            b_range: ExpressionNumberConstraint::default(),
-            c_range: ExpressionNumberConstraint::default(),
+            a_constraint: ExpressionNumberConstraint::default(),
+            b_constraint: ExpressionNumberConstraint::default(),
+            c_constraint: ExpressionNumberConstraint::default(),
             operator: HashMap::new(),
+            max_ops: NERDLE_MAX_OPS,
         })
     }
 }
@@ -106,7 +108,7 @@ impl fmt::Display for EquationConstraint {
         }
         write!(f, ")")?;
 
-        write!(f, ", a: {}, b: {}, c: {}", &self.a_range, &self.b_range, &self.c_range)
+        write!(f, ", a: {}, b: {}, c: {}", &self.a_constraint, &self.b_constraint, &self.c_constraint)
     }
 }
 
