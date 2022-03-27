@@ -7,14 +7,24 @@ use crate::expr;
 
 pub const NERDLE_TURNS: u32 = 6;
 
-pub const NERDLE_CHARACTERS: u32 = 10;
-pub const NERDLE_NUM_MAX: u32 = 9999;
-// 32*32 to 99*99, other values won't have 10 digits
-pub const NERDLE_C_MUL_MAX: u32 = 9801;
-pub const NERDLE_C_MUL_MIN: u32 = 1024;
-pub const NERDLE_C_OTHER_MAX: u32 = 999;
+pub const NERDLE_CHARACTERS: u32 = 8;
+pub const NERDLE_NUM_MAX: u32 = 999;
+// 10*1 to 99*9, other values won't have 10 digits
+pub const NERDLE_C_MUL_MAX: u32 = 891;
+pub const NERDLE_C_MUL_MIN: u32 = 100;
+pub const NERDLE_C_OTHER_MAX: u32 = 99;
 pub const NERDLE_C_OTHER_MIN: u32= 1;
-pub const NERDLE_A_MAX: u32 = 999;
+pub const NERDLE_A_MAX: u32 = 99;
+
+// 10-digit options
+// pub const NERDLE_CHARACTERS: u32 = 10;
+// pub const NERDLE_NUM_MAX: u32 = 9999;
+// // 32*32 to 99*99, other values won't have 10 digits
+// pub const NERDLE_C_MUL_MAX: u32 = 9801;
+// pub const NERDLE_C_MUL_MIN: u32 = 1024;
+// pub const NERDLE_C_OTHER_MAX: u32 = 999;
+// pub const NERDLE_C_OTHER_MIN: u32= 1;
+// pub const NERDLE_A_MAX: u32 = 999;
 
 pub fn nerdle_str(guess: &str, answer: &str) -> Result<NerdleResult, NerdleError> {
     let mut result = NerdleResult { positions: [NerdlePositionResult::Gray; NERDLE_CHARACTERS as usize] };
