@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::eq::Equation;
-use crate::nerdle::{NERDLE_CHARACTERS};
+use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX, NERDLE_C_MUL_MIN, NERDLE_C_MUL_MAX, NERDLE_C_OTHER_MIN, NERDLE_C_OTHER_MAX};
 use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum, mknum, mknump};
 use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
@@ -24,8 +24,8 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
     };
 
     let c_init_range = match op {
-        ExpressionOperatorEnum::Times => 1024..=9801, // 32*32 to 99*99, other values won't have 10 digits
-        _ => 1..=999
+        ExpressionOperatorEnum::Times => NERDLE_C_MUL_MIN..=NERDLE_C_MUL_MAX,
+        _ => NERDLE_C_OTHER_MIN..=NERDLE_C_OTHER_MAX
     };
     let description = format!("range {}..={}", c_init_range.start(), c_init_range.end());
     let c_init_constraint = ExpressionNumberConstraint {
@@ -63,7 +63,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
                 accept: Rc::new(accept),
             },
             ExpressionOperatorEnum::Minus => ExpressionNumberConstraint{
-                range: c..=999,
+                range: c..=NERDLE_A_MAX,
                 description: describer(),
                 accept: Rc::new(accept)
             },

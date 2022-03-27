@@ -5,11 +5,12 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
+use crate::nerdle::{NERDLE_NUM_MAX};
 use crate::expr::{ExpressionNumber, mknum};
 use crate::eq::{Equation};
 
 const ATTEMPTS: u32 = 1000;
-const DEFAULT_RANGE: RangeInclusive<u32> = 0..=9999;
+const DEFAULT_RANGE: RangeInclusive<u32> = 0..=NERDLE_NUM_MAX;
 
 thread_local! {
     // Must be thread_local because Rc is not threadsafe

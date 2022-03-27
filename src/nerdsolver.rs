@@ -7,7 +7,7 @@ use std::cmp::{max};
 
 use crate::eq::Equation;
 use crate::expr::{ExpressionPart};
-use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS};
+use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX};
 use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
@@ -466,6 +466,6 @@ fn range_for_digits(digits: usize) -> RangeInclusive<u32> {
         2 => 10..=99,
         3 => 100..=999,
         4 => 1000..=9999,
-        _ => 1..=99999,
+        _ => 1..=NERDLE_NUM_MAX,
     }
 }
