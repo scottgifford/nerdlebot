@@ -14,7 +14,7 @@ use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchF
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
 const OPERATOR_STR: &str = "-+*/";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum NerdleIsChar {
     Definitely,
     DefinitelyNot,
@@ -33,18 +33,7 @@ impl NerdleCharInfo {
         NerdleCharInfo {
             min_count: 0,
             max_count: NERDLE_CHARACTERS,
-            positions: [
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-                NerdleIsChar::Maybe,
-            ]
+            positions: [ NerdleIsChar::Maybe; NERDLE_CHARACTERS as usize ],
         }
     }
 }
@@ -65,20 +54,10 @@ struct NerdleSolverData {
 
 impl Default for NerdleSolverData {
     fn default() -> Self {
+        let positions: [HashMap<u8, bool>; NERDLE_CHARACTERS as usize] = Default::default();
         NerdleSolverData {
             char_info: HashMap::new(),
-            positions: [
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-                HashMap::new(),
-            ],
+            positions,
             equal_pos: None,
             op_pos: None,
             op: None,
@@ -156,8 +135,6 @@ impl NerdleSolverData {
 pub struct NerdleSolver {
     data: Rc<RefCell<NerdleSolverData>>,
 }
-
-
 
 impl NerdleSolver {
     pub fn new() -> NerdleSolver {

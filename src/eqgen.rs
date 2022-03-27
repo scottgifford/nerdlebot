@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::eq::Equation;
+use crate::nerdle::{NERDLE_CHARACTERS};
 use crate::expr::{Expression, ExpressionNumber, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum, mknum, mknump};
-
 use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
 const ATTEMPTS: u32 = 10000;
@@ -43,7 +43,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
     }
 
     for _try in 1..ATTEMPTS {
-        let chars_remaining: i32 = 10 - 1 /* for = */ -1 /* for operator chosen above */;
+        let chars_remaining: i32 = NERDLE_CHARACTERS as i32 - 1 /* for = */ -1 /* for operator chosen above */;
 
         // TODO: Make this a method?
         let c = find_num_with_constraint(&mut rng, &c_constraint)?;
