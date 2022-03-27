@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use rand::Rng;
 
 use crate::eq::Equation;
 use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX, NERDLE_C_MUL_MIN, NERDLE_C_MUL_MAX, NERDLE_C_OTHER_MIN, NERDLE_C_OTHER_MAX};
@@ -10,7 +9,6 @@ const ATTEMPTS: u32 = 10000;
 
 pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, NoMatchFound>
 {
-    // TODO: Is this efficient?  Should this be a global or something?
     let mut rng = rand::thread_rng();
 
     let op = loop {
@@ -161,23 +159,42 @@ macro_rules! skip_fail {
     };
 }
 
-pub fn eqgen_3_operands() -> Result<Equation, NoMatchFound> {
+pub fn eqgen_3_operands_constrained(constraint: &EquationConstraint) -> Result<Equation, NoMatchFound> {
     let mut rng = rand::thread_rng();
 
     for _try in 1..ATTEMPTS {
-        let a = rng.gen_range(1..=9);
-        let b = rng.gen_range(1..=9);
-        let b2 = rng.gen_range(1..=9);
-        let op1: ExpressionOperatorEnum = rand::random();
-        let op2: ExpressionOperatorEnum = rand::random();
+        let a_base_constraint = ExpressionNumberConstraint {
+            range: 1..=9,
+            description: format!("1..=9"),
+            ..Default::default()
+        };
+        let a = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint))?;
 
-        let expr = Expression { parts: Vec::from([
-            mknump(a),
+        let b_base_constraint = ExpressionNumberConstraint {
+            range: 1..=9,
+            description: format!("1..=9"),
+            ..Default::default()
+        };
+        let b = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint))?;
+
+        let b2_base_constraint = ExpressionNumberConstraint {
+            range: 1..=9,
+            description: format!("1..=9"),
+            ..Default::default()
+        };
+        let b2 = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
+
+        let op1 = gen_operator_constrained(constraint);
+        let op2 = gen_operator_constrained(constraint);
+
+        let parts: Vec<ExpressionPart> = Vec::from([
+            ExpressionPart::Number(a),
             op2op(&op1),
-            mknump(b),
+            ExpressionPart::Number(b),
             op2op(&op2),
-            mknump(b2),
-        ])};
+            ExpressionPart::Number(b2),
+        ]);
+        let expr = Expression { parts };
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
         if (expr.len() + res.len() + 1) != NERDLE_CHARACTERS as usize {
             continue;
@@ -205,3 +222,20 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
     eqgen_constrained(&EquationConstraint::default())
 }
 
+pub fn eqgen_3_operands() -> Result<Equation, NoMatchFound> {
+    eqgen_3_operands_constrained(&EquationConstraint::default())
+}
+
+
+pub fn gen_operator_constrained(constraint: &EquationConstraint) -> ExpressionOperatorEnum {
+    loop {
+        let tmp_op: ExpressionOperatorEnum = rand::random();
+        let tmp_op_ch = tmp_op.to_string().as_bytes()[0];
+        if !*constraint.operator.get(&tmp_op_ch).unwrap_or(&true) {
+            // println!("Rejected operator '{}' because it's been ruled out", tmp_op_ch as char);
+            continue;
+        }
+        // println!("Accepted operator '{}'", tmp_op_ch as char);
+        break tmp_op;
+    }
+}
