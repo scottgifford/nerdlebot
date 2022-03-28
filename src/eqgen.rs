@@ -177,23 +177,43 @@ pub fn eqgen_3_operands_constrained(constraint: &EquationConstraint) -> Result<E
             1..=9
         };
 
+        let op1 = gen_operator_constrained(constraint);
+        let a_base_range = match op1 {
+            ExpressionOperatorEnum::Divide if extra_ops < 1 => 100..=999,
+            _ => operand_range.clone()
+        };
         let a_base_constraint = ExpressionNumberConstraint {
-            range: operand_range.clone(),
-            description: format!("1..=9"),
+            description: format!("{}..={}", a_base_range.start(), a_base_range.end()),
+            range: a_base_range,
             ..Default::default()
         };
         let a = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint))?;
-        parts.push(ExpressionPart::Number(a));
 
-        let op1 = gen_operator_constrained(constraint);
-        parts.push(op2op(&op1));
-
-        let b_base_constraint = ExpressionNumberConstraint {
+        let mut b_base_constraint = ExpressionNumberConstraint {
             range: operand_range.clone(),
-            description: format!("1..=9"),
+            description: format!("{}..={}", operand_range.start(), operand_range.end()),
             ..Default::default()
         };
+        match op1 {
+            ExpressionOperatorEnum::Divide => {
+                // TODO: Naming is a real mess
+                // TODO: Should we always validate this way?
+                let op1_2 = op2op(&op1);
+                let a = a.clone();
+                match op1_2 {
+                    ExpressionPart::Operator(op1_3) => {
+                        b_base_constraint.range = 1..=9;
+                        b_base_constraint.accept = Rc::new(move |b| op1_3.operate(&a, &b).is_ok() );
+                    },
+                    _ => continue // Should never happen
+                }
+            },
+            _ => { },
+        };
         let b = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint))?;
+
+        parts.push(ExpressionPart::Number(a));
+        parts.push(op2op(&op1));
         parts.push(ExpressionPart::Number(b));
 
         for _i in 0..extra_ops {
@@ -211,13 +231,12 @@ pub fn eqgen_3_operands_constrained(constraint: &EquationConstraint) -> Result<E
 
         let expr = Expression { parts };
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
-        if (expr.len() + res.len() + 1) != NERDLE_CHARACTERS as usize {
+        let eq = Equation { expr, res };
+        if eq.len() != NERDLE_CHARACTERS as usize {
+            println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
             continue;
         }
-        return Ok(Equation {
-            expr,
-            res,
-        });
+        return Ok(eq);
     }
 
     Err(NoMatchFound { message: format!("Failed to generate equation after {} attempts", ATTEMPTS) })
