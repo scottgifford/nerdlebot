@@ -108,7 +108,7 @@ fn main() -> Result<(), CommandLineError> {
         },
 
         Some("gen3") => {
-            let eq = eqgen::eqgen_3_operands()
+            let eq = eqgen::eqgen()
                 .expect("Failed to generate equation");
             println!("Equation: {}", &eq);
             println!("  Length: {}", prettylen(eq.len()));

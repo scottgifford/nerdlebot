@@ -395,6 +395,6 @@ pub fn mknum(x:u32) -> ExpressionNumber {
     }
 }
 
-pub fn mknump(x:u32) -> ExpressionPart {
-    ExpressionPart::Number(mknum(x))
-}
+// pub fn mknump(x:u32) -> ExpressionPart {
+//     ExpressionPart::Number(mknum(x))
+// }
