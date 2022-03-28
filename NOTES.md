@@ -34,3 +34,18 @@
 1/1+9=10
 9+8/2=13
 
+
+
+### Losses
+Answer: 51+30=81
+Answer: 32+10=42
+Answer: 10+62=72
+Answer: 35-15=20
+Answer: 77-17=60
+Answer: 11+40=51
+Answer: 36+50=86
+Answer: 40+41=81
+Answer: 26+30=56
+Answer: 89-19=70
+Answer: 25+30=55
+Answer: 35+30=65

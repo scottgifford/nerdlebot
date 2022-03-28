@@ -152,7 +152,7 @@ macro_rules! skip_fail {
     ($res:expr, $message:expr) => {
         match $res {
             Ok(val) => val,
-            Err(_e) => {
+            Err( e) => {
                 // println!("{} (Error {})", $message, e);
                 continue;
             }
@@ -170,7 +170,7 @@ pub fn eqgen_3_operands_constrained(constraint: &EquationConstraint) -> Result<E
         } else {
             0
         };
-        println!("Trying with {} extra operators", extra_ops);
+        // println!("Trying with {} extra operators", extra_ops);
         let operand_range = if extra_ops < 1 {
             1..=99 // TODO: Is this right?  Maybe not for all operators?
         } else {
@@ -233,9 +233,19 @@ pub fn eqgen_3_operands_constrained(constraint: &EquationConstraint) -> Result<E
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
         let eq = Equation { expr, res };
         if eq.len() != NERDLE_CHARACTERS as usize {
-            println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
+            // println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
             continue;
         }
+        if !eq.computes().unwrap_or(false) {
+            println!("Equation unexpectedly did not compute: {}", eq);
+            continue;
+        }
+
+        if !(constraint.accept)(&eq) {
+            // println!("Equation did not match constraint: {}", eq);
+            continue;
+        }
+
         return Ok(eq);
     }
 

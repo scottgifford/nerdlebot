@@ -8,7 +8,7 @@ use std::cmp::{max};
 use crate::eq::Equation;
 use crate::expr::{ExpressionPart};
 use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX};
-use crate::eqgen::{eqgen_constrained};
+use crate::eqgen::{eqgen_3_operands_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
@@ -225,12 +225,12 @@ impl NerdleSolver {
 
         println!("Constraint: {}", &constraint);
 
-        let mut r = eqgen_constrained(&constraint);
+        let mut r = eqgen_3_operands_constrained(&constraint);
         for _ in 0..100 {
             if r.is_ok() {
                 return r;
             }
-            r = eqgen_constrained(&constraint);
+            r = eqgen_3_operands_constrained(&constraint);
         }
         r
     }
