@@ -6,13 +6,13 @@ use std::ops::RangeInclusive;
 use std::cmp::{max};
 
 use crate::eq::Equation;
-use crate::expr::{ExpressionPart};
+// use crate::expr::{ExpressionPart};
 use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX};
 use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
-const OPERATOR_STR: &str = "-+*/";
+// const OPERATOR_STR: &str = "-+*/";
 
 #[derive(Clone, Copy, Debug)]
 pub enum NerdleIsChar {
@@ -48,8 +48,6 @@ struct NerdleSolverData {
     pub char_info: HashMap<u8, NerdleCharInfo>,
     pub positions: [HashMap<u8, bool>; NERDLE_CHARACTERS as usize],
     pub equal_pos: Option<usize>,
-    pub op: Option<u8>,
-    pub op_pos: Option<usize>,
 }
 
 impl Default for NerdleSolverData {
@@ -59,8 +57,6 @@ impl Default for NerdleSolverData {
             char_info: HashMap::new(),
             positions,
             equal_pos: None,
-            op_pos: None,
-            op: None,
         }
     }
 }
@@ -88,25 +84,25 @@ impl NerdleSolverData {
             }
 
             // Check the operator
-            match self.op {
-                Some(op) => {
-                    match eq.expr.parts.iter().find(|x| match x {
-                        ExpressionPart::Operator(_) => true,
-                        _ => false
-                    }) {
-                        Some(eq_op) => {
-                            // TODO: Seems hacky
-                            let eq_op_str = eq_op.to_string();
-                            if (op as char).to_string() != eq_op_str {
-                                println!("Rejecting based on operator, got {} but expected {}", eq_op_str, op.to_string());
-                                return Err(NerdleError { message: format!("Equation had operator {} but expected {}", eq_op_str, op.to_string())});
-                            }
-                        }
-                        None => return Err(NerdleError { message: format!("Equation had no operator somehow?!")})
-                    }
-                }
-                None => { }
-            }
+            // match self.op {
+            //     Some(op) => {
+            //         match eq.expr.parts.iter().find(|x| match x {
+            //             ExpressionPart::Operator(_) => true,
+            //             _ => false
+            //         }) {
+            //             Some(eq_op) => {
+            //                 // TODO: Seems hacky
+            //                 let eq_op_str = eq_op.to_string();
+            //                 if (op as char).to_string() != eq_op_str {
+            //                     println!("Rejecting based on operator, got {} but expected {}", eq_op_str, op.to_string());
+            //                     return Err(NerdleError { message: format!("Equation had operator {} but expected {}", eq_op_str, op.to_string())});
+            //                 }
+            //             }
+            //             None => return Err(NerdleError { message: format!("Equation had no operator somehow?!")})
+            //         }
+            //     }
+            //     None => { }
+            // }
 
             // Now check counts
             let mut char_counts = HashMap::new();
@@ -161,23 +157,25 @@ impl NerdleSolver {
         };
 
         let data = self.data.borrow();
-        for op in OPERATOR_STR.as_bytes().iter() {
-            match data.op {
-                Some(op2) if *op == op2 => { constraint.operator.insert(*op, true); },
-                Some(_) => { constraint.operator.insert(*op, false); },
-                None => match data.char_info.get(op) {
-                    Some(info) => if info.max_count < 1 {
-                        constraint.operator.insert(*op, false);
-                    },
-                    None => { }
-                },
-            };
-        }
 
-        match data.op {
-            Some(op) => { constraint.operator.insert(op, true); },
-            _ => {},
-        };
+        // TODO: How can we infer the operator information now?
+        // for op in OPERATOR_STR.as_bytes().iter() {
+        //     match data.op {
+        //         Some(op2) if *op == op2 => { constraint.operator.insert(*op, true); },
+        //         Some(_) => { constraint.operator.insert(*op, false); },
+        //         None => match data.char_info.get(op) {
+        //             Some(info) => if info.max_count < 1 {
+        //                 constraint.operator.insert(*op, false);
+        //             },
+        //             None => { }
+        //         },
+        //     };
+        // }
+        // TODO: Below too
+        // match data.op {
+        //     Some(op) => { constraint.operator.insert(op, true); },
+        //     _ => {},
+        // };
 
         match data.equal_pos {
             Some(pos) => {
@@ -194,34 +192,130 @@ impl NerdleSolver {
             _ => {}
         };
 
-        match data.op_pos {
-            Some(op_pos) => {
-                let digits = op_pos;
-                let range = range_for_digits(digits);
-                // TODO: Also add a callback with a regex of acceptable characters
-                let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
-                constraint.a_constraint = ExpressionNumberConstraint {
-                    range,
-                    description,
-                    ..Default::default()
-                };
-                match data.equal_pos {
-                    Some(equal_pos) => {
-                        let digits = equal_pos - op_pos - 1;
+
+        // TODO: Figure out what to do about multiple operators.  Maybe?
+        // 1. Figure out if there are 1 or 2
+        //    a. If we actually see 2, well then there are 2
+        //    b. If operator is in position 1 and/or 3, we can't tell
+        //       8*90=720
+        //       4+3+3=10
+        //    c. If operator is in position 2, there must be 1
+        //    d. If anything besides an operator is in positions 1 or 3, there must be 1
+        // 2. If 1:
+        // 3. If 2:
+        
+        let is_op_at = |pos: usize| {
+            let mut ret: Option<bool> = Some(false);
+            for op in ['+','-','/','*'] {
+                match data.positions[pos].get(&(op as u8)) {
+                    Some(true) => return Some(true),
+                    Some(false) => { },
+                    None => { ret = None; },
+                }
+            }
+            ret
+        };
+
+        let calc_op_range = || {
+            if is_op_at(2).unwrap_or(false) {
+                return 1..=1;
+            }
+            match (is_op_at(1), is_op_at(3)) {
+                (Some(true), Some(true)) => return 2..=2,
+                (Some(false), _) | (_, Some(false)) => return 1..=1,
+                _ => { }
+            }
+            return 1..=2;
+        };
+
+        let op_range = calc_op_range();
+        if op_range.start() == op_range.end() {
+            // We know the number of operators, apply some optimizations
+            if *op_range.start() == 1 {
+                // 1 Operator
+                let op_pos = (0..NERDLE_CHARACTERS).find(|i| is_op_at(*i as usize).unwrap_or(false));
+                let op_ch = op_pos.map(|op_pos| data.positions[op_pos as usize].iter().find(|(_key, val)| **val).map(|(key, _val)| key));
+                match (op_pos, op_ch) {
+                    (Some(op_pos), Some(_op_ch)) => {
+                        let op_pos = op_pos as usize;
+                        let digits = op_pos;
                         let range = range_for_digits(digits);
                         // TODO: Also add a callback with a regex of acceptable characters
-                        let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
-                        constraint.b_constraint = ExpressionNumberConstraint {
+                        let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
+                        constraint.a_constraint = ExpressionNumberConstraint {
                             range,
                             description,
                             ..Default::default()
                         };
-                    },
-                    _ => {}
+                        // TODO: Can this be merged with the equal_pos item for c_constraint above?
+                        match data.equal_pos {
+                            Some(equal_pos) => {
+                                let digits = equal_pos - op_pos - 1;
+                                let range = range_for_digits(digits);
+                                // TODO: Also add a callback with a regex of acceptable characters
+                                let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
+                                constraint.b_constraint = ExpressionNumberConstraint {
+                                    range,
+                                    description,
+                                    ..Default::default()
+                                };
+                            },
+                            _ => {}
+                        }
+                    }
+                    (_, _) => { },
                 }
-            },
-            _ => {}
-        };
+            } else {
+                // 2 Operators
+                constraint.a_constraint = ExpressionNumberConstraint {
+                    range: 1..=9,
+                    description: format!("1..=9"),
+                    ..Default::default()
+                };
+                constraint.b_constraint = ExpressionNumberConstraint {
+                    range: 1..=9,
+                    description: format!("1..=9"),
+                    ..Default::default()
+                };
+                constraint.c_constraint = ExpressionNumberConstraint {
+                    range: 10..=99,
+                    description: format!("10..=99"),
+                    ..Default::default()
+                };
+            }
+        }
+        constraint.num_ops = op_range;
+
+        // Else, we don't know so just need to keep guessing
+
+        // match data.op_pos {
+        //     Some(op_pos) => {
+        //         let digits = op_pos;
+        //         let range = range_for_digits(digits);
+        //         // TODO: Also add a callback with a regex of acceptable characters
+        //         let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
+        //         constraint.a_constraint = ExpressionNumberConstraint {
+        //             range,
+        //             description,
+        //             ..Default::default()
+        //         };
+        //         match data.equal_pos {
+        //             Some(equal_pos) => {
+        //                 let digits = equal_pos - op_pos - 1;
+        //                 let range = range_for_digits(digits);
+        //                 // TODO: Also add a callback with a regex of acceptable characters
+        //                 let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
+        //                 constraint.b_constraint = ExpressionNumberConstraint {
+        //                     range,
+        //                     description,
+        //                     ..Default::default()
+        //                 };
+        //             },
+        //             _ => {}
+        //         }
+        //     },
+        //     _ => {}
+        // };
 
         println!("Constraint: {}", &constraint);
 
@@ -279,10 +373,8 @@ impl NerdleSolver {
                 }
             }
 
-            {
-                let char_info = data.char_info.entry(guess_ch).or_insert(NerdleCharInfo::new());
-                (*char_info).positions[i] = new_char_pos_info;
-            }
+            let char_info = data.char_info.entry(guess_ch).or_insert(NerdleCharInfo::new());
+            (*char_info).positions[i] = new_char_pos_info;
 
             // Special handling for equal sign and operators
             match guess_ch as char {
@@ -292,16 +384,17 @@ impl NerdleSolver {
                     },
                     _ => { }
                 },
-                '+' | '-' | '*' | '/' => match result.positions[i] {
-                    NerdlePositionResult::Green => {
-                        data.op_pos = Some(i);
-                        data.op = Some(guess_ch);
-                    },
-                    NerdlePositionResult::Yellow => {
-                        data.op = Some(guess_ch);
-                    },
-                    _ => { }
-                },
+                // '+' | '-' | '*' | '/' => match result.positions[i] {
+                //     // TODO: Figure out what to do about multiple operators
+                //     NerdlePositionResult::Green => {
+                //         data.op_pos = Some(i);
+                //         data.op = Some(guess_ch);
+                //     },
+                //     NerdlePositionResult::Yellow => {
+                //         data.op = Some(guess_ch);
+                //     },
+                //     _ => { }
+                // },
                 _ => { }
             }
         }
@@ -338,14 +431,15 @@ impl NerdleSolver {
         }
         println!("");
 
-        print!("Operator is {} at {} and is not: ", data.op.map(|x| x as char).unwrap_or('?'), data.op_pos.map(|x| x.to_string()).unwrap_or("?".to_string()));
-        for (key, ent) in data.char_info.iter() {
-            match *key as char {
-                '+' | '-' | '/' | '*' => if ent.max_count < 1 { print!("{} ", *key as char); },
-                _ => { }
-            }
-        }
-        println!("");
+        // TODO: Update with new 3-operand support structure
+        // print!("Operator is {} at {} and is not: ", data.op.map(|x| x as char).unwrap_or('?'), data.op_pos.map(|x| x.to_string()).unwrap_or("?".to_string()));
+        // for (key, ent) in data.char_info.iter() {
+        //     match *key as char {
+        //         '+' | '-' | '/' | '*' => if ent.max_count < 1 { print!("{} ", *key as char); },
+        //         _ => { }
+        //     }
+        // }
+        // println!("");
 
         let mut known_pos: HashMap<u8, u32> = HashMap::new();
         for (key, val) in data.char_info.iter() {
@@ -402,15 +496,17 @@ impl NerdleSolver {
                         NerdleIsChar::DefinitelyNot => false,
                         NerdleIsChar::Maybe => match *ch as char {
                             '=' => data.equal_pos == None,
-                            '+' | '-' | '*' | '/' => match data.op {
-                                None => true,
-                                Some(x) if x == *ch => match data.op_pos {
-                                    None => true,
-                                    Some(y) if y == pos => true,
-                                    Some(_) => false,
-                                }
-                                Some(_) => false,
-                            },
+                            '+' | '-' | '*' | '/' => true,
+                            // TODO: Better support for ops with new approach?
+                            // match data.op {
+                            //     None => true,
+                            //     Some(x) if x == *ch => match data.op_pos {
+                            //         None => true,
+                            //         Some(y) if y == pos => true,
+                            //         Some(_) => false,
+                            //     }
+                            //     Some(_) => false,
+                            // },
                             '0'..='9' => true,
                             _ => panic!("Unexpected character '{}'", *ch)
                         }
@@ -431,14 +527,15 @@ impl fmt::Display for NerdleSolver {
 
         write!(f, "Equal sign at: {}\n", data.equal_pos.map(|x| x.to_string()).unwrap_or("?".to_string()))?;
 
-        write!(f, "Operator is {} at {} and is not: ", data.op.map(|x| x as char).unwrap_or('?'), data.op_pos.map(|x| x.to_string()).unwrap_or("?".to_string()))?;
-        for (key, ent) in data.char_info.iter() {
-            match *key as char {
-                '+' | '-' | '/' | '*' => if ent.max_count < 1 { write!(f, "{} ", *key as char)?; },
-                _ => { }
-            }
-        }
-        write!(f, "\n")?;
+        // TODO: Something similar with new structure
+        // write!(f, "Operator is {} at {} and is not: ", data.op.map(|x| x as char).unwrap_or('?'), data.op_pos.map(|x| x.to_string()).unwrap_or("?".to_string()))?;
+        // for (key, ent) in data.char_info.iter() {
+        //     match *key as char {
+        //         '+' | '-' | '/' | '*' => if ent.max_count < 1 { write!(f, "{} ", *key as char)?; },
+        //         _ => { }
+        //     }
+        // }
+        // write!(f, "\n")?;
 
         for ch in VALID_CHAR_STR.as_bytes().iter() {
             write!(f, "Character {}: {}\n", *ch as char, data.char_info.get(ch).unwrap_or(&NerdleCharInfo::new()))?;

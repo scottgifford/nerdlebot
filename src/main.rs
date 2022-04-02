@@ -10,6 +10,7 @@ mod eqgen;
 mod constraint;
 mod nerdle;
 mod nerdsolver;
+mod util;
 
 use crate::eq::Equation;
 use crate::expr::Expression;

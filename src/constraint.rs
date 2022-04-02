@@ -8,6 +8,7 @@ use std::ops::RangeInclusive;
 use crate::nerdle::{NERDLE_NUM_MAX, NERDLE_MAX_OPS};
 use crate::expr::{ExpressionNumber, mknum};
 use crate::eq::{Equation};
+use crate::util::range_rand_or_only;
 
 const ATTEMPTS: u32 = 1000;
 const DEFAULT_RANGE: RangeInclusive<u32> = 0..=NERDLE_NUM_MAX;
@@ -56,14 +57,14 @@ impl fmt::Display for ExpressionNumberConstraint
     }
 }
 
-pub fn find_num_with_constraint(rng: &mut impl Rng, constraint: &ExpressionNumberConstraint) -> Result<ExpressionNumber, NoMatchFound>
+// TODO: No longer need rng object
+pub fn find_num_with_constraint(_rng: &mut impl Rng, constraint: &ExpressionNumberConstraint) -> Result<ExpressionNumber, NoMatchFound>
 {
-    if constraint.range.is_empty() {
-        return Err(NoMatchFound { message: format!("Invalid range in constraint: {}", constraint)});
-    }
-
     for _try in 1..ATTEMPTS {
-        let candidate = rng.gen_range(constraint.range.clone());
+        let candidate = match range_rand_or_only(constraint.range.clone()) {
+            Ok(num) => num,
+            Err(err) => return Err(NoMatchFound { message: format!("Could not find possibility for constraint {}: {}", constraint, err)}),
+        };
         let candidate = mknum(candidate);
         if !(constraint.accept)(&candidate) {
             // println!("  Rejected {} with constraint {}", candidate, constraint);
@@ -82,7 +83,7 @@ pub struct EquationConstraint
     pub b2_constraint: ExpressionNumberConstraint,
     pub c_constraint: ExpressionNumberConstraint,
     pub operator: HashMap<u8, bool>,
-    pub max_ops: u32,
+    pub num_ops: RangeInclusive<u32>,
 }
 
 impl Default for EquationConstraint {
@@ -94,14 +95,14 @@ impl Default for EquationConstraint {
             b2_constraint: ExpressionNumberConstraint::default(),
             c_constraint: ExpressionNumberConstraint::default(),
             operator: HashMap::new(),
-            max_ops: NERDLE_MAX_OPS,
+            num_ops: 1..=NERDLE_MAX_OPS,
         })
     }
 }
 
 impl fmt::Display for EquationConstraint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Operator is {} and is not: (", self.operator.iter().find(|(_key, ent)| **ent).map(|(key, _ent)| *key as char).unwrap_or('?'))?;
+        write!(f, "{}-{} Operator(s), ({}) and not (", self.num_ops.start(), self.num_ops.end(), self.operator.iter().find(|(_key, ent)| **ent).map(|(key, _ent)| *key as char).unwrap_or('?'))?;
         for (key, ent) in self.operator.iter() {
             match *key as char {
                 '+' | '-' | '/' | '*' => if !ent { write!(f, "{} ", *key as char)?; },

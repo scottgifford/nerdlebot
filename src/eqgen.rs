@@ -1,10 +1,10 @@
 use std::rc::Rc;
-use rand::Rng;
 
 use crate::eq::Equation;
 use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX};
 use crate::expr::{Expression, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum};
 use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
+use crate::util::range_rand_or_only;
 
 const ATTEMPTS: u32 = 10000;
 
@@ -24,10 +24,14 @@ macro_rules! skip_fail {
 pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, NoMatchFound> {
     let mut rng = rand::thread_rng();
 
+    println!("Incoming constraint: {}", constraint);
+
     for _try in 1..ATTEMPTS {
         let mut parts: Vec<ExpressionPart> = Vec::new();
-        let extra_ops = if constraint.max_ops > 1 {
-            rng.gen_range(0..constraint.max_ops)
+        let num_ops = range_rand_or_only(constraint.num_ops.clone())?;
+
+        let extra_ops = if num_ops > 1 {
+            1
         } else {
             0
         };
@@ -44,15 +48,16 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             _ => operand_range.clone()
         };
         let a_base_constraint = ExpressionNumberConstraint {
-            description: format!("{}..={}", a_base_range.start(), a_base_range.end()),
+            description: format!("{}..={} (from operator {}, extra_ops {})", a_base_range.start(), a_base_range.end(), op1, extra_ops),
             range: a_base_range,
             ..Default::default()
         };
-        let a = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint))?;
+        let a_constraint = &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint);
+        let a = skip_fail!(find_num_with_constraint(&mut rng, a_constraint), "Failed to generate a");
 
         let mut b_base_constraint = ExpressionNumberConstraint {
             range: operand_range.clone(),
-            description: format!("{}..={}", operand_range.start(), operand_range.end()),
+            description: format!("{}..={} (from operator {}, extra_ops {})", operand_range.start(), operand_range.end(), op1, extra_ops),
             ..Default::default()
         };
         match op1 {
@@ -71,7 +76,8 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             },
             _ => { },
         };
-        let b = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint))?;
+        let b_constraint = &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint);
+        let b = skip_fail!(find_num_with_constraint(&mut rng, &b_constraint), "Failed to generate b");
 
         parts.push(ExpressionPart::Number(a));
         parts.push(op2op(&op1));
