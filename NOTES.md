@@ -1,3 +1,6 @@
+## TODO
+* If we know there is 1 op, remove possibility from all positions
+
 ### 8-Char 2-Op Combos
 --------
 12+34=56

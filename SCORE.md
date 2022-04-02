@@ -17,3 +17,18 @@ Played 1000 games
 real 150m23.521s (2h43m23.521s)
 user 149m59.143s
 sys 0m8.614s
+
+## Version 657fff088fe1b8f9f4bb5b11af635c6118f3afa3 - Sat Apr 2 17:50:11 2022 -0400
+Major changes: Add support for 3-operand solutions
+Played 1000 games
+       0 failures
+       995 wins
+       5 losses
+       0.995 win rate
+
+ Turn 1 wins 1
+ Turn 2 wins 30
+ Turn 3 wins 372
+ Turn 4 wins 441
+ Turn 5 wins 134
+ Turn 6 wins 17
