@@ -1,6 +1,9 @@
 use std::str::FromStr;
 use std::io;
 use std::fmt;
+use std::fs::File;
+use std::io::{BufReader, BufRead};
+use std::time::{Instant};
 
 use colored::*;
 
@@ -335,6 +338,98 @@ fn main() -> Result<(), CommandLineError> {
                 println!("I lost");
             }
 
+            Ok(())
+        },
+
+        // TODO: Lots of duplicated code
+        Some("solve_file") => {
+            let file_name = std::env::args().nth(2)
+                .expect("Expected file name in arg 2");
+            let file = File::open(&file_name)
+                .expect(&format!("Error opening file '{}'", &file_name));
+            let buf_reader = BufReader::new(file);
+
+            let mut wins = 0;
+            let mut losses = 0;
+            let mut win_turn_hist = [0; nerdle::NERDLE_TURNS as usize];
+
+            let mut i = 0;
+
+            for line in buf_reader.lines() {
+                let line = line.expect(&format!("Error readline line from file '{}'", &file_name));
+                let line = line.trim();
+
+                match line.chars().next() {
+                    None => continue, // Empty line (after removing whitespace)
+                    Some('#') => continue, // Comment line
+                    _ => { }
+                };
+
+                println!("=== Playing game {}", i);
+                let start_time = Instant::now();
+
+                let mut solver = NerdleSolver::new();
+                let answer = Equation::from_str(&line)
+                    .expect("Failed to parse equation");
+
+                if answer.len() != NERDLE_CHARACTERS as usize {
+                    return Err(CommandLineError { message: format!("Equation '{}' is wrong length ({} chars != {})", answer, answer.len(), NERDLE_CHARACTERS) } );
+                }
+                if !answer.computes().unwrap_or(false) {
+                    return Err(CommandLineError { message: format!("Equation unexpectedly did not compute: {}", answer) } );
+                }
+
+                println!("Answer: {}", &answer);
+
+                let mut won = false;
+                for turn in 1..=nerdle::NERDLE_TURNS {
+                    let mut guess;
+                    let res;
+                    loop {
+                        let constraint = solver.constraint();
+                        match constraint.accept(&answer) {
+                            Err(err) =>  return Err(CommandLineError { message: format!("Solver constraint {} rejects answer: {}", constraint, err) } ),
+                            Ok(()) => { }
+                        }
+                        guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
+                        println!("Turn {}  Guess: {}", turn, guess);
+                        match solver.eq_matches(&guess) {
+                            Ok(()) => { },
+                            Err(why) => println!("Equation is impossible because {}", why)
+                        }
+                        res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed, trying again");
+                        break;
+                    }
+
+                    println!("Turn {} Result: {}", turn, res);
+                    pretty_print_result(&guess.to_string(), &res);
+                    if res.won() {
+                        won = true;
+                        println!("I won in {} turns!", turn);
+                        wins += 1;
+                        win_turn_hist[turn as usize - 1] += 1;
+                        break;
+                    }
+                    solver.update(&guess, &res);
+                    solver.print_hint();
+                }
+                if !won {
+                    losses += 1;
+                    println!("I lost");
+                }
+                println!("Game {} completed in {:?}", i, start_time.elapsed());
+                i += 1;
+            }
+            let count = i;
+            println!("Played {} games", count);
+            println!("       {} failures", count - wins - losses);
+            println!("       {} wins", wins);
+            println!("       {} losses", losses);
+            println!("       {} win rate",(wins as f64) / (count as f64));
+            println!("");
+            for i in 0..nerdle::NERDLE_TURNS as usize {
+                println!(" Turn {} wins {}", i+1, win_turn_hist[i]);
+            }
             Ok(())
         },
 
