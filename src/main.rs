@@ -300,7 +300,18 @@ fn main() -> Result<(), CommandLineError> {
                 let mut guess;
                 let res;
                 loop {
-                    guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
+                    let constraint = solver.constraint();
+                    match constraint.accept(&answer) {
+                        Err(err) =>  return Err(CommandLineError { message: format!("Solver constraint {} rejects answer: {}", constraint, err) } ),
+                        Ok(()) => { }
+                    }
+                    guess = match std::env::args().nth(2 + turn as usize) {
+                        Some(guess) => match Equation::from_str(&guess) {
+                            Ok(guess) => guess,
+                            Err(err) => return Err(CommandLineError { message: format!("Invalid guess equation in command-line arg {} '{}': {}", 2+turn, guess, err) } )
+                        }
+                        None => skip_fail!(solver.take_guess(), "No valid guess was generating, trying again")
+                    };
                     println!("Turn {}  Guess: {}", turn, guess);
                     match solver.eq_matches(&guess) {
                         Ok(()) => println!("Equation is possible"),
