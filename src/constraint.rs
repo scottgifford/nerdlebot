@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
 use crate::nerdle::{NERDLE_NUM_MAX, NERDLE_MAX_OPS};
-use crate::expr::{ExpressionNumber, mknum};
+use crate::expr::{ExpressionNumber, ExpressionOperator, ExpressionPart, mknum};
 use crate::eq::{Equation};
 use crate::util::range_rand_or_only;
 
@@ -36,6 +36,16 @@ impl ExpressionNumberConstraint {
             accept: Rc::new(move |n| {
                 (a_accept)(n) && (b_accept)(n)
             }),
+        }
+    }
+
+    pub fn accept(&self, num: &ExpressionNumber) -> Result<(), NoMatchFound> {
+        if !self.range.contains(&num.value) {
+            Err(NoMatchFound { message: format!("Value {} is not in range: {}", num, self)})
+        } else if !(self.accept)(&num) {
+            Err(NoMatchFound { message: format!("Value {} did not match accept function: {}", num, self)})
+        } else {
+            Ok(())
         }
     }
 }
@@ -82,7 +92,7 @@ pub struct EquationConstraint
     pub b_constraint: ExpressionNumberConstraint,
     pub b2_constraint: ExpressionNumberConstraint,
     pub c_constraint: ExpressionNumberConstraint,
-    pub operator: HashMap<u8, bool>,
+    pub operator: HashMap<u8, bool>, // TODO: Should really be a count
     pub num_ops: RangeInclusive<u32>,
 }
 
@@ -97,6 +107,43 @@ impl Default for EquationConstraint {
             operator: HashMap::new(),
             num_ops: 1..=NERDLE_MAX_OPS,
         })
+    }
+}
+
+impl EquationConstraint {
+    pub fn accept(&self, eq: &Equation) -> Result<(),NoMatchFound> {
+        let op_allowed = |op: &Box<dyn ExpressionOperator>| self.operator.get(&op.as_char_byte()).unwrap_or(&true);
+
+        let accept_a_op1_b = |a: &ExpressionNumber, op1: &Box<dyn ExpressionOperator>, b: &ExpressionNumber, num_operators: &u32| {
+            self.a_constraint.accept(&a)?;
+            self.b_constraint.accept(&b)?;
+            if !self.num_ops.contains(&num_operators) { // 1 operator
+                return Err(NoMatchFound { message: format!("Equation had 1 operator: {}", self)});
+            }
+            if !op_allowed(&op1) {
+                return Err(NoMatchFound { message: format!("Equation had disallowed operator: {}", self)});
+            }
+            Ok(())
+        };
+
+        self.c_constraint.accept(&eq.res)?;
+        match eq.expr.parts.as_slice() {
+            [ExpressionPart::Number(a), ExpressionPart::Operator(op1), ExpressionPart::Number(b)] => {
+                accept_a_op1_b(&a, &op1, &b, &1)?;
+            },
+            [ExpressionPart::Number(a), ExpressionPart::Operator(op1), ExpressionPart::Number(b), ExpressionPart::Operator(op2), ExpressionPart::Number(b2)] => {
+                accept_a_op1_b(&a, &op1, &b, &2)?;
+                self.b2_constraint.accept(&b2)?;
+                if !op_allowed(&op2) {
+                    return Err(NoMatchFound { message: format!("Equation had disallowed operator: {}", &self)});
+                }
+            },
+            _ => return Err(NoMatchFound { message: format!("Unrecognized pattern for equation: {}", &eq)})
+        }
+        if !(self.accept)(&eq) {
+            return Err(NoMatchFound { message: format!("Accept function failed for constraint: {}", self)})
+        }
+        Ok(())
     }
 }
 
