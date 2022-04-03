@@ -209,6 +209,55 @@ impl NerdleSolver {
             }
             ret
         };
+        let op1_pos_opt = (0..NERDLE_CHARACTERS as usize).find(|i| is_op_at(*i as usize).unwrap_or(false));
+        let op2_pos_opt = match op1_pos_opt {
+            Some(op1_pos) => ((op1_pos+1)..NERDLE_CHARACTERS as usize).find(|i| is_op_at(*i as usize).unwrap_or(false)),
+            None => None
+        };
+
+        fn constraint_for_digits(digits: usize, name: &str) -> ExpressionNumberConstraint {
+            constraint_for_range(range_for_digits(digits), digits, name)
+        }
+
+        fn constraint_for_digits_or_less(digits: usize, name: &str) -> ExpressionNumberConstraint {
+            constraint_for_range(range_for_digits_or_less(digits), digits, name)
+        }
+
+        fn constraint_for_range(range: RangeInclusive<i32>, digits: usize, name: &str) -> ExpressionNumberConstraint {
+            let description = format!("{} has {} digits range {}..={}", &name, &digits, &range.start(), &range.end());
+            ExpressionNumberConstraint {
+                range,
+                description,
+                ..Default::default()
+            }
+        }
+
+        match (op1_pos_opt, op2_pos_opt, data.equal_pos) {
+            (Some(op1_pos), Some(op2_pos), Some(equal_pos)) => {
+                println!("Pattern 1: op1_pos={}, op2_pos={}, equal_pos={}", op1_pos, op2_pos, equal_pos);
+                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
+                constraint.b_constraint = constraint_for_digits(op2_pos - op1_pos - 1, "b");
+                constraint.b2_constraint = constraint_for_digits(equal_pos - op2_pos - 1, "b2");
+                constraint.num_ops = 2..=2;
+            },
+            (Some(op1_pos), Some(op2_pos), None) => {
+                println!("Pattern 2: op1_pos={}, op2_pos={}", op1_pos, op2_pos);
+                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
+                constraint.b_constraint = constraint_for_digits(op2_pos - op1_pos - 1, "b");
+                constraint.num_ops = 2..=2;
+            },
+            (Some(op1_pos), _, Some(equal_pos)) if op1_pos < 3 => {
+                println!("Pattern 3: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
+                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
+                constraint.b_constraint = constraint_for_digits_or_less(equal_pos - op1_pos - 1, "b");
+                constraint.b2_constraint = constraint_for_digits_or_less(equal_pos - op1_pos - 1, "b2");
+            },
+            (Some(op1_pos), _, _) if op1_pos < 3 => {
+                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
+            },
+            // TODO: Lots more combinations
+            _ => { } // No new information
+        }
 
         // let calc_op_range = || {
             // if is_op_at(2).unwrap_or(false) {
@@ -562,6 +611,16 @@ fn range_for_digits(digits: usize) -> RangeInclusive<i32> {
         2 => 10..=99,
         3 => 100..=999,
         4 => 1000..=9999,
+        _ => 1..=NERDLE_NUM_MAX,
+    }
+}
+
+fn range_for_digits_or_less(digits: usize) -> RangeInclusive<i32> {
+    match digits {
+        1 => 1..=9,
+        2 => 1..=99,
+        3 => 1..=999,
+        4 => 1..=9999,
         _ => 1..=NERDLE_NUM_MAX,
     }
 }
