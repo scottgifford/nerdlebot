@@ -139,7 +139,7 @@ impl NerdleSolver {
         }
     }
 
-    pub fn take_guess(&self) -> Result<Equation, NoMatchFound> {
+    pub fn constraint(&self) -> EquationConstraint {
         let mut constraint = EquationConstraint {
             accept: {
                 let data: Rc<RefCell<NerdleSolverData>> = self.data.clone();
@@ -210,7 +210,7 @@ impl NerdleSolver {
             ret
         };
 
-        let calc_op_range = || {
+        // let calc_op_range = || {
             // if is_op_at(2).unwrap_or(false) {
             //     return 1..=1;
             // }
@@ -219,67 +219,67 @@ impl NerdleSolver {
             //     (Some(false), _) | (_, Some(false)) => return 1..=1,
             //     _ => { }
             // }
-            return 1..=2;
-        };
+            // return 1..=2;
+        // };
 
-        let op_range = calc_op_range();
-        if op_range.start() == op_range.end() {
-            // We know the number of operators, apply some optimizations
-            if *op_range.start() == 1 {
-                // 1 Operator
-                let op_pos = (0..NERDLE_CHARACTERS).find(|i| is_op_at(*i as usize).unwrap_or(false));
-                let op_ch = op_pos.map(|op_pos| data.positions[op_pos as usize].iter().find(|(_key, val)| **val).map(|(key, _val)| key));
-                match (op_pos, op_ch) {
-                    (Some(op_pos), Some(_op_ch)) => {
-                        let op_pos = op_pos as usize;
-                        let digits = op_pos;
-                        let range = range_for_digits(digits);
-                        // TODO: Also add a callback with a regex of acceptable characters
-                        let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
-                        constraint.a_constraint = ExpressionNumberConstraint {
-                            range,
-                            description,
-                            ..Default::default()
-                        };
-                        // TODO: Can this be merged with the equal_pos item for c_constraint above?
-                        match data.equal_pos {
-                            Some(equal_pos) => {
-                                let digits = equal_pos - op_pos - 1;
-                                let range = range_for_digits(digits);
-                                // TODO: Also add a callback with a regex of acceptable characters
-                                let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
-                                constraint.b_constraint = ExpressionNumberConstraint {
-                                    range,
-                                    description,
-                                    ..Default::default()
-                                };
-                            },
-                            _ => {}
-                        }
-                    }
-                    (_, _) => { },
-                }
-            } else {
-                // 2 Operators
-                // TODO: Really only one of these can be 2-digit, once we have found that we can restrict
-                constraint.a_constraint = ExpressionNumberConstraint {
-                    range: 1..=99,
-                    description: format!("1..=99"),
-                    ..Default::default()
-                };
-                constraint.b_constraint = ExpressionNumberConstraint {
-                    range: 1..=99,
-                    description: format!("1..=99"),
-                    ..Default::default()
-                };
-                constraint.c_constraint = ExpressionNumberConstraint {
-                    range: 1..=99,
-                    description: format!("1..=99"),
-                    ..Default::default()
-                };
-            }
-        }
-        constraint.num_ops = op_range;
+        // let op_range = calc_op_range();
+        // if op_range.start() == op_range.end() {
+        //     // We know the number of operators, apply some optimizations
+        //     if *op_range.start() == 1 {
+        //         // 1 Operator
+        //         let op_pos = (0..NERDLE_CHARACTERS).find(|i| is_op_at(*i as usize).unwrap_or(false));
+        //         let op_ch = op_pos.map(|op_pos| data.positions[op_pos as usize].iter().find(|(_key, val)| **val).map(|(key, _val)| key));
+        //         match (op_pos, op_ch) {
+        //             (Some(op_pos), Some(_op_ch)) => {
+        //                 let op_pos = op_pos as usize;
+        //                 let digits = op_pos;
+        //                 let range = range_for_digits(digits);
+        //                 // TODO: Also add a callback with a regex of acceptable characters
+        //                 let description = format!("Updating a_range to {}..={} because op is in pos {} leaving {} digits", range.start(), range.end(), op_pos, digits);
+        //                 constraint.a_constraint = ExpressionNumberConstraint {
+        //                     range,
+        //                     description,
+        //                     ..Default::default()
+        //                 };
+        //                 // TODO: Can this be merged with the equal_pos item for c_constraint above?
+        //                 match data.equal_pos {
+        //                     Some(equal_pos) => {
+        //                         let digits = equal_pos - op_pos - 1;
+        //                         let range = range_for_digits(digits);
+        //                         // TODO: Also add a callback with a regex of acceptable characters
+        //                         let description = format!("Updating b_range to {}..={} because op is in pos {} and equal in pos {} leaving {} digits", range.start(), range.end(), op_pos, equal_pos, digits);
+        //                         constraint.b_constraint = ExpressionNumberConstraint {
+        //                             range,
+        //                             description,
+        //                             ..Default::default()
+        //                         };
+        //                     },
+        //                     _ => {}
+        //                 }
+        //             }
+        //             (_, _) => { },
+        //         }
+        //     } else {
+        //         // 2 Operators
+        //         // TODO: Really only one of these can be 2-digit, once we have found that we can restrict
+        //         constraint.a_constraint = ExpressionNumberConstraint {
+        //             range: 1..=99,
+        //             description: format!("1..=99"),
+        //             ..Default::default()
+        //         };
+        //         constraint.b_constraint = ExpressionNumberConstraint {
+        //             range: 1..=99,
+        //             description: format!("1..=99"),
+        //             ..Default::default()
+        //         };
+        //         constraint.c_constraint = ExpressionNumberConstraint {
+        //             range: 1..=99,
+        //             description: format!("1..=99"),
+        //             ..Default::default()
+        //         };
+        //     }
+        // }
+        // constraint.num_ops = op_range;
 
         // Else, we don't know so just need to keep guessing
 
@@ -311,8 +311,12 @@ impl NerdleSolver {
         //     },
         //     _ => {}
         // };
+        constraint
+    }
 
-        // println!("Constraint: {}", &constraint);
+    pub fn take_guess(&self) -> Result<Equation, NoMatchFound> {
+        let constraint = self.constraint();
+        println!("Constraint: {}", &constraint);
 
         let mut r = eqgen_constrained(&constraint);
         for _ in 0..100 {
