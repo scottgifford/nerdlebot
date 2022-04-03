@@ -88,8 +88,8 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             parts.push(op2op(&op2));
 
             let b2_base_constraint = ExpressionNumberConstraint {
-                range: 1..=9,
-                description: format!("1..=9"),
+                range: operand_range.clone(),
+                description: format!("{}..={}", operand_range.start(), operand_range.end()),
                 ..Default::default()
             };
             let b2 = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
@@ -98,10 +98,14 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
 
         let expr = Expression { parts };
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
-        // TODO: Seems like this range check should be part of the constraint object!
-        if &res.value < constraint.c_constraint.range.start() || &res.value > constraint.c_constraint.range.end() {
-            continue;
+        match constraint.c_constraint.accept(&res) {
+            Err(err) => {
+                // println!("c {} from expr {} did not match c_constraint {}: {}", &res, &expr, constraint.c_constraint, err);
+                continue;
+            },
+            Ok(()) => { }
         }
+
         let eq = Equation { expr, res };
         if eq.len() != NERDLE_CHARACTERS as usize {
             // println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
@@ -112,9 +116,12 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             continue;
         }
 
-        if !(constraint.accept)(&eq) {
-            // println!("Equation did not match constraint: {}", eq);
-            continue;
+        match constraint.accept(&eq) {
+            Err(err) => {
+                // println!("Equation {} did not match constraint: {}", eq, err);
+                continue;
+            },
+            Ok(()) => { }
         }
 
         return Ok(eq);
