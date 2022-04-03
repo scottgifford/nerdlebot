@@ -12,7 +12,7 @@ use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
-// const OPERATOR_STR: &str = "-+*/";
+const OPERATOR_STR: &str = "-+*/";
 
 #[derive(Clone, Copy, Debug)]
 pub enum NerdleIsChar {
@@ -158,24 +158,18 @@ impl NerdleSolver {
 
         let data = self.data.borrow();
 
-        // TODO: How can we infer the operator information now?
-        // for op in OPERATOR_STR.as_bytes().iter() {
-        //     match data.op {
-        //         Some(op2) if *op == op2 => { constraint.operator.insert(*op, true); },
-        //         Some(_) => { constraint.operator.insert(*op, false); },
-        //         None => match data.char_info.get(op) {
-        //             Some(info) => if info.max_count < 1 {
-        //                 constraint.operator.insert(*op, false);
-        //             },
-        //             None => { }
-        //         },
-        //     };
-        // }
-        // TODO: Below too
-        // match data.op {
-        //     Some(op) => { constraint.operator.insert(op, true); },
-        //     _ => {},
-        // };
+        for op in OPERATOR_STR.as_bytes().iter() {
+            match data.char_info.get(op) {
+                Some(info) => {
+                    if info.min_count > 0 {
+                        constraint.operator.insert(*op, true);
+                    } else if info.max_count < 1 {
+                        constraint.operator.insert(*op, false);
+                    }
+                }
+                None => { }
+            }
+        }
 
         match data.equal_pos {
             Some(pos) => {
@@ -217,14 +211,14 @@ impl NerdleSolver {
         };
 
         let calc_op_range = || {
-            if is_op_at(2).unwrap_or(false) {
-                return 1..=1;
-            }
-            match (is_op_at(1), is_op_at(3)) {
-                (Some(true), Some(true)) => return 2..=2,
-                (Some(false), _) | (_, Some(false)) => return 1..=1,
-                _ => { }
-            }
+            // if is_op_at(2).unwrap_or(false) {
+            //     return 1..=1;
+            // }
+            // match (is_op_at(1), is_op_at(3)) {
+            //     (Some(true), Some(true)) => return 2..=2,
+            //     (Some(false), _) | (_, Some(false)) => return 1..=1,
+            //     _ => { }
+            // }
             return 1..=2;
         };
 
@@ -267,19 +261,20 @@ impl NerdleSolver {
                 }
             } else {
                 // 2 Operators
+                // TODO: Really only one of these can be 2-digit, once we have found that we can restrict
                 constraint.a_constraint = ExpressionNumberConstraint {
-                    range: 1..=9,
-                    description: format!("1..=9"),
+                    range: 1..=99,
+                    description: format!("1..=99"),
                     ..Default::default()
                 };
                 constraint.b_constraint = ExpressionNumberConstraint {
-                    range: 1..=9,
-                    description: format!("1..=9"),
+                    range: 1..=99,
+                    description: format!("1..=99"),
                     ..Default::default()
                 };
                 constraint.c_constraint = ExpressionNumberConstraint {
-                    range: 10..=99,
-                    description: format!("10..=99"),
+                    range: 1..=99,
+                    description: format!("1..=99"),
                     ..Default::default()
                 };
             }

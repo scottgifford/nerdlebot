@@ -39,7 +39,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         let operand_range = if extra_ops < 1 {
             1..=NERDLE_A_MAX
         } else {
-            1..=9
+            1..=99
         };
 
         let op1 = gen_operator_constrained(constraint);
@@ -98,6 +98,10 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
 
         let expr = Expression { parts };
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
+        // TODO: Seems like this range check should be part of the constraint object!
+        if &res.value < constraint.c_constraint.range.start() || &res.value > constraint.c_constraint.range.end() {
+            continue;
+        }
         let eq = Equation { expr, res };
         if eq.len() != NERDLE_CHARACTERS as usize {
             // println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
