@@ -199,7 +199,7 @@ fn main() -> Result<(), CommandLineError> {
                     println!("Read: {}", cleanput);
                     guess = skip_fail!(Equation::from_str(&cleanput), "Invalid equation, try again");
                     match solver.eq_matches(&guess) {
-                        Ok(()) => println!("Equation is possible"),
+                        Ok(()) => { },
                         Err(why) => println!("Equation is impossible because {}", why)
                     }
                     res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed try again");
@@ -245,7 +245,7 @@ fn main() -> Result<(), CommandLineError> {
                         guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
                         println!("Turn {}  Guess: {}", turn, guess);
                         match solver.eq_matches(&guess) {
-                            Ok(()) => println!("Equation is possible"),
+                            Ok(()) => { },
                             Err(why) => println!("Equation is impossible because {}", why)
                         }
                         res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed, trying again");
@@ -317,7 +317,7 @@ fn main() -> Result<(), CommandLineError> {
                     };
                     println!("Turn {}  Guess: {}", turn, guess);
                     match solver.eq_matches(&guess) {
-                        Ok(()) => println!("Equation is possible"),
+                        Ok(()) => { },
                         Err(why) => println!("Equation is impossible because {}", why)
                     }
                     res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed, trying again");
