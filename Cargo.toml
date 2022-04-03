@@ -8,5 +8,6 @@ edition = "2018"
 [dependencies]
 colored = "2.0.0"
 rand = "0.8.4"
+regex = "1.5.5"
 
 [features]

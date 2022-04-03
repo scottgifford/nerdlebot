@@ -4,12 +4,14 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::cmp::{max};
+use regex::Regex;
 
 use crate::eq::Equation;
 // use crate::expr::{ExpressionPart};
-use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX};
+use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX, NERDLE_OPERAND_MAX_DIGITS};
 use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
+use crate::expr::{ExpressionNumber};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
 const OPERATOR_STR: &str = "-+*/";
@@ -215,48 +217,55 @@ impl NerdleSolver {
             None => None
         };
 
-        fn constraint_for_digits(digits: usize, name: &str) -> ExpressionNumberConstraint {
-            constraint_for_range(range_for_digits(digits), digits, name)
-        }
-
-        fn constraint_for_digits_or_less(digits: usize, name: &str) -> ExpressionNumberConstraint {
-            constraint_for_range(range_for_digits_or_less(digits), digits, name)
-        }
-
-        fn constraint_for_range(range: RangeInclusive<i32>, digits: usize, name: &str) -> ExpressionNumberConstraint {
-            let description = format!("{} has {} digits range {}..={}", &name, &digits, &range.start(), &range.end());
-            ExpressionNumberConstraint {
-                range,
-                description,
-                ..Default::default()
-            }
-        }
-
+        let max_digits = NERDLE_OPERAND_MAX_DIGITS as usize;
+        // println!("Pattern check: ({}, {}, {})", op1_pos_opt.unwrap_or(99), op2_pos_opt.unwrap_or(99), data.equal_pos.unwrap_or(99));
         match (op1_pos_opt, op2_pos_opt, data.equal_pos) {
             (Some(op1_pos), Some(op2_pos), Some(equal_pos)) => {
-                println!("Pattern 1: op1_pos={}, op2_pos={}, equal_pos={}", op1_pos, op2_pos, equal_pos);
-                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
-                constraint.b_constraint = constraint_for_digits(op2_pos - op1_pos - 1, "b");
-                constraint.b2_constraint = constraint_for_digits(equal_pos - op2_pos - 1, "b2");
+                // println!("Pattern 1: op1_pos={}, op2_pos={}, equal_pos={}", op1_pos, op2_pos, equal_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits_start_end(op2_pos, equal_pos, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, "c");
                 constraint.num_ops = 2..=2;
             },
             (Some(op1_pos), Some(op2_pos), None) => {
-                println!("Pattern 2: op1_pos={}, op2_pos={}", op1_pos, op2_pos);
-                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
-                constraint.b_constraint = constraint_for_digits(op2_pos - op1_pos - 1, "b");
+                // println!("Pattern 2: op1_pos={}, op2_pos={}", op1_pos, op2_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, "b");
                 constraint.num_ops = 2..=2;
             },
             (Some(op1_pos), _, Some(equal_pos)) if op1_pos < 3 => {
-                println!("Pattern 3: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
-                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
-                constraint.b_constraint = constraint_for_digits_or_less(equal_pos - op1_pos - 1, "b");
-                constraint.b2_constraint = constraint_for_digits_or_less(equal_pos - op1_pos - 1, "b2");
+                // op1_pos < 3, we know there is not another operator before op1_pos
+                // println!("Pattern 3: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, equal_pos, true, "b");
+                // constraint.b2_constraint = self.constraint_for_digits_or_less(op_equal_pos - op1_pos - 1, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, "c");
+            },
+            (Some(op1_pos), None, Some(equal_pos)) => {
+                // op1_pos >= 3, there may or may not be another operator before op1_pos
+                // println!("Pattern 3a: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, true, "a");
+                // TODO: I think this is 2 not MAX_DIGITS but can't prove it!
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, "c");
             },
             (Some(op1_pos), _, _) if op1_pos < 3 => {
-                constraint.a_constraint = constraint_for_digits(op1_pos, "a");
+                // println!("Pattern 4: op1_pos={}", op1_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, "b2");
+                constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, "c");
             },
             // TODO: Lots more combinations
-            _ => { } // No new information
+            _ => {
+                // println!("Pattern 99");
+                constraint.a_constraint = self.constraint_for_digits(max_digits, Some(0), true, "a");
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, "b2");
+                constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, "c");
+            }
         }
 
         // let calc_op_range = || {
@@ -365,7 +374,7 @@ impl NerdleSolver {
 
     pub fn take_guess(&self) -> Result<Equation, NoMatchFound> {
         let constraint = self.constraint();
-        println!("Constraint: {}", &constraint);
+        // println!("Constraint: {}", &constraint);
 
         let mut r = eqgen_constrained(&constraint);
         for _ in 0..100 {
@@ -567,6 +576,103 @@ impl NerdleSolver {
 
         ret
     }
+
+    fn constraint_for_digits_start_end(&self, start: usize, end: usize, min: bool, name: &str) -> ExpressionNumberConstraint {
+        // println!("constraint_for_digits_start_end(&self, {}, {}, {}, {})", &start, &end, &min, &name);
+        let (start, digits) = if start == 0 {
+            (0, end)
+        } else {
+            (start + 1, end - start - 1)
+        };
+
+        self.constraint_for_digits(digits, Some(start), min, name)
+    }
+
+    fn constraint_for_digits(&self, digits: usize, start: Option<usize>, min: bool, name: &str) -> ExpressionNumberConstraint {
+        // println!("Finding constraints for {}", &name);
+        let range = if min {
+            range_for_digits_or_less(digits)
+        } else {
+            range_for_digits(digits)
+        };
+        let regex = match start {
+            Some(start) => self.regex_for_digits_at(start, digits, min),
+            None => self.regex_for_digits_anywhere(digits, min),
+        };
+        let description = format!("{} has {} {} digits range {}..={} regex /{}/",
+            &name,
+            if min {
+                &"up to"
+            } else {
+                &"exactly"
+            },
+            &digits,
+            &range.start(), &range.end(),
+            &regex.as_str());
+        let accept = Rc::new(move |n: &ExpressionNumber| regex.is_match(&n.to_string()));
+        ExpressionNumberConstraint {
+            range,
+            description,
+            accept,
+            ..Default::default()
+        }
+    }
+
+    fn regex_for_digits_at(&self, start: usize, digits: usize, min: bool) -> Regex {
+        // println!("regex_for_digits_at(&self, {}, {}, {})", &start, &digits, &min);
+        let mut regex = String::new();
+        regex.push_str("(?-u)^");
+        for pos in start..(start+digits) {
+            regex.push_str("[");
+            for byte in self.possibilities_for_pos(pos).iter() {
+                let chr = *byte as char;
+                match chr {
+                    '0'..='9' => regex.push(chr),
+                    _ => { }
+                }
+            }
+            regex.push_str("]");
+            if min {
+                regex.push_str("?");
+            }
+        }
+        regex.push_str("$");
+
+        // TODO: Better error handling?
+        Regex::new(&regex).unwrap()
+    }
+
+    // TODO: Lots of duplication from above
+    fn regex_for_digits_anywhere(&self, digits: usize, min: bool) -> Regex {
+        let data = self.data.borrow();
+        let mut regex = String::new();
+        regex.push_str("(?-u)^[");
+
+        for chr in '0'..='9' {
+            let byte = chr as u8;
+            match data.char_info.get(&byte) {
+                None => {
+                    regex.push(chr);
+                },
+                Some(info) if info.max_count > 0 => {
+                    regex.push(chr);
+                },
+                _ => { }
+            }
+        }
+
+        regex.push_str("]{");
+        if min {
+            regex.push_str(&format!("1,{}", digits));
+        } else {
+            regex.push_str(&format!("{}", digits));
+        }
+        regex.push_str("}$");
+
+        // TODO: Better error handling?
+        Regex::new(&regex).unwrap()
+    }
+
 }
 
 impl fmt::Display for NerdleSolver {

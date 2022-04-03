@@ -54,6 +54,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         };
         let a_constraint = &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint);
         let a = skip_fail!(find_num_with_constraint(&mut rng, a_constraint), "Failed to generate a");
+        // println!("Generated a {} from constraint: {}", a, &a_constraint);
 
         let mut b_base_constraint = ExpressionNumberConstraint {
             range: operand_range.clone(),

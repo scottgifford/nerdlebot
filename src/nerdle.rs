@@ -12,12 +12,13 @@ pub const NERDLE_MAX_OPS: u32 = 2;
 
 pub const NERDLE_CHARACTERS: u32 = 8;
 pub const NERDLE_NUM_MAX: i32 = 999;
+pub const NERDLE_OPERAND_MAX_DIGITS: u32 = 4;
 // 10*1 to 99*9, other values won't have 10 digits
 // pub const NERDLE_C_MUL_MAX: i32 = 891;
 // pub const NERDLE_C_MUL_MIN: i32 = 100;
 // pub const NERDLE_C_OTHER_MAX: i32 = 99;
 // pub const NERDLE_C_OTHER_MIN: i32= 1;
-pub const NERDLE_A_MAX: i32 = 99;
+pub const NERDLE_A_MAX: i32 = 999; // TODO: Might even be 9999
 
 // 10-digit options
 // pub const NERDLE_CHARACTERS: i32 = 10;
