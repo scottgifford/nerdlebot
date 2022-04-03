@@ -16,6 +16,7 @@ use crate::eq::Equation;
 use crate::expr::Expression;
 use crate::eqgen::eqgen;
 use crate::nerdsolver::NerdleSolver;
+use crate::nerdle::{NERDLE_CHARACTERS};
 
 #[derive(Clone)]
 pub struct CommandLineError {
@@ -274,6 +275,55 @@ fn main() -> Result<(), CommandLineError> {
             for i in 0..nerdle::NERDLE_TURNS as usize {
                 println!(" Turn {} wins {}", i+1, win_turn_hist[i]);
             }
+            Ok(())
+        },
+
+        // TODO: Lots of duplicated code
+        Some("solve") => {
+            let answer = std::env::args().nth(2)
+                .expect("no expr given");
+            let answer = Equation::from_str(&answer)
+                .expect("Failed to parse equation");
+
+            if answer.len() != NERDLE_CHARACTERS as usize {
+                return Err(CommandLineError { message: format!("Equation '{}' is wrong length ({} chars != {})", answer, answer.len(), NERDLE_CHARACTERS) } );
+            }
+            if !answer.computes().unwrap_or(false) {
+                return Err(CommandLineError { message: format!("Equation unexpectedly did not compute: {}", answer) } );
+            }
+        
+            let mut solver = NerdleSolver::new();
+            println!("Answer: {}", &answer);
+
+            let mut won = false;
+            for turn in 1..=nerdle::NERDLE_TURNS {
+                let mut guess;
+                let res;
+                loop {
+                    guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
+                    println!("Turn {}  Guess: {}", turn, guess);
+                    match solver.eq_matches(&guess) {
+                        Ok(()) => println!("Equation is possible"),
+                        Err(why) => println!("Equation is impossible because {}", why)
+                    }
+                    res = skip_fail!(nerdle::nerdle(&guess, &answer), "Nerdling failed, trying again");
+                    break;
+                }
+
+                println!("Turn {} Result: {}", turn, res);
+                pretty_print_result(&guess.to_string(), &res);
+                if res.won() {
+                    won = true;
+                    println!("I won in {} turns!", turn);
+                    break;
+                }
+                solver.update(&guess, &res);
+                solver.print_hint();
+            }
+            if !won {
+                println!("I lost");
+            }
+
             Ok(())
         },
 
