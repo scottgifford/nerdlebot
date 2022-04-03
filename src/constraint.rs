@@ -165,7 +165,7 @@ impl fmt::Display for EquationConstraint {
         }
         write!(f, ")")?;
 
-        write!(f, ", a: {}, b: {}, c: {}", &self.a_constraint, &self.b_constraint, &self.c_constraint)
+        write!(f, ", a: {}, b: {}, b2: {}, c: {}", &self.a_constraint, &self.b_constraint, &self.b2_constraint, &self.c_constraint)
     }
 }
 
