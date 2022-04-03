@@ -220,6 +220,13 @@ pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Display + fmt::Debu
         1
     }
     fn precedence(&self) -> u8;
+    fn as_char(&self) -> char {
+        // TODO: Invert this implementation
+        self.to_string().chars().next().expect("Operator string had no chars?!")
+    }
+    fn as_char_byte(&self) -> u8 {
+        self.as_char() as u8
+    }
 }
 
 
