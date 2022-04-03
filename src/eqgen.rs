@@ -24,7 +24,7 @@ macro_rules! skip_fail {
 pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, NoMatchFound> {
     let mut rng = rand::thread_rng();
 
-    println!("Incoming constraint: {}", constraint);
+    // println!("Incoming constraint: {}", constraint);
 
     for _try in 1..ATTEMPTS {
         let mut parts: Vec<ExpressionPart> = Vec::new();

@@ -317,7 +317,7 @@ impl NerdleSolver {
         //     _ => {}
         // };
 
-        println!("Constraint: {}", &constraint);
+        // println!("Constraint: {}", &constraint);
 
         let mut r = eqgen_constrained(&constraint);
         for _ in 0..100 {
