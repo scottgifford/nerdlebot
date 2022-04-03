@@ -557,7 +557,7 @@ impl fmt::Display for NerdleSolver {
     }
 }
 
-fn range_for_digits(digits: usize) -> RangeInclusive<u32> {
+fn range_for_digits(digits: usize) -> RangeInclusive<i32> {
     match digits {
         1 => 1..=9,
         2 => 10..=99,

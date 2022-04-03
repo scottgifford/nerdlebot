@@ -11,7 +11,7 @@ use crate::eq::{Equation};
 use crate::util::range_rand_or_only;
 
 const ATTEMPTS: u32 = 1000;
-const DEFAULT_RANGE: RangeInclusive<u32> = 0..=NERDLE_NUM_MAX;
+const DEFAULT_RANGE: RangeInclusive<i32> = 0..=NERDLE_NUM_MAX;
 
 thread_local! {
     // Must be thread_local because Rc is not threadsafe
@@ -21,7 +21,7 @@ thread_local! {
 
 pub struct ExpressionNumberConstraint
 {
-    pub range: RangeInclusive<u32>,
+    pub range: RangeInclusive<i32>,
     pub description: String,
     pub accept: Rc<dyn Fn(&ExpressionNumber) -> bool>,
 }

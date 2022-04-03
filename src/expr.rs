@@ -165,7 +165,7 @@ impl ExpressionPart {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExpressionNumber {
-    pub value: u32,
+    pub value: i32,
 }
 
 impl fmt::Display for ExpressionNumber {
@@ -351,7 +351,7 @@ impl FromStr for Expression {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut parts: Vec<ExpressionPart> = Vec::new();
         let mut in_num: bool = false;
-        let mut accum: u32 = 0;
+        let mut accum: i32 = 0;
 
         // Simulate an extra space on the end so we get the last number
         let iter = input.as_bytes().iter().chain(" ".as_bytes().iter());
@@ -360,7 +360,7 @@ impl FromStr for Expression {
                 b'0'..=b'9' => {
                     in_num = true;
                     accum *= 10;
-                    accum += (item - b'0') as u32;    
+                    accum += (item - b'0') as i32;
                 },
                 _ => {
                     if in_num {
@@ -389,12 +389,12 @@ impl FromStr for Expression {
 }
 
 
-pub fn mknum(x:u32) -> ExpressionNumber {
+pub fn mknum(x:i32) -> ExpressionNumber {
     ExpressionNumber {
         value: x
     }
 }
 
-// pub fn mknump(x:u32) -> ExpressionPart {
+// pub fn mknump(x:i32) -> ExpressionPart {
 //     ExpressionPart::Number(mknum(x))
 // }
