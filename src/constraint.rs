@@ -102,10 +102,17 @@ impl Default for EquationConstraint {
 
 impl fmt::Display for EquationConstraint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}-{} Operator(s), ({}) and not (", self.num_ops.start(), self.num_ops.end(), self.operator.iter().find(|(_key, ent)| **ent).map(|(key, _ent)| *key as char).unwrap_or('?'))?;
+        write!(f, "{}-{} Operator(s), (", self.num_ops.start(), self.num_ops.end())?;
         for (key, ent) in self.operator.iter() {
             match *key as char {
-                '+' | '-' | '/' | '*' => if !ent { write!(f, "{} ", *key as char)?; },
+                '+' | '-' | '/' | '*' => if *ent { write!(f, "{} ", *key as char)?; },
+                _ => { }
+            }
+        }
+        write!(f, ") and not (")?;
+        for (key, ent) in self.operator.iter() {
+            match *key as char {
+                '+' | '-' | '/' | '*' => if !*ent { write!(f, "{} ", *key as char)?; },
                 _ => { }
             }
         }
