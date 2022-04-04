@@ -8,7 +8,6 @@ use crate::expr;
 
 pub const NERDLE_TURNS: u32 = 6;
 
-// TODO: Real value is 2 but code isn't ready yet
 pub const NERDLE_MAX_OPS: u32 = 2;
 
 pub const NERDLE_CHARACTERS: u32 = 8;
