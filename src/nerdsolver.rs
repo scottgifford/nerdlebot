@@ -3,12 +3,12 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
-use std::cmp::{max};
+use std::cmp::{min, max};
 use regex::Regex;
 
 use crate::eq::Equation;
 // use crate::expr::{ExpressionPart};
-use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX, NERDLE_OPERAND_MAX_DIGITS};
+use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX, NERDLE_OPERAND_MAX_DIGITS, NERDLE_MAX_OPS};
 use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
 use crate::expr::{ExpressionNumber};
@@ -163,11 +163,7 @@ impl NerdleSolver {
         for op in OPERATOR_STR.as_bytes().iter() {
             match data.char_info.get(op) {
                 Some(info) => {
-                    if info.min_count > 0 {
-                        constraint.operator.insert(*op, true);
-                    } else if info.max_count < 1 {
-                        constraint.operator.insert(*op, false);
-                    }
+                    constraint.operator.insert(*op, info.min_count..=min(info.max_count,NERDLE_MAX_OPS));
                 }
                 None => { }
             }
@@ -374,7 +370,7 @@ impl NerdleSolver {
 
     pub fn take_guess(&self) -> Result<Equation, NoMatchFound> {
         let constraint = self.constraint();
-        // println!("Constraint: {}", &constraint);
+        println!("Constraint: {}", &constraint);
 
         let mut r = eqgen_constrained(&constraint);
         for _ in 0..100 {

@@ -149,7 +149,7 @@ pub fn gen_operator_constrained(constraint: &EquationConstraint) -> ExpressionOp
     loop {
         let tmp_op: ExpressionOperatorEnum = rand::random();
         let tmp_op_ch = tmp_op.to_string().as_bytes()[0];
-        if !*constraint.operator.get(&tmp_op_ch).unwrap_or(&true) {
+        if !constraint.can_have_op_byte(tmp_op_ch) {
             // println!("Rejected operator '{}' because it's been ruled out", tmp_op_ch as char);
             continue;
         }

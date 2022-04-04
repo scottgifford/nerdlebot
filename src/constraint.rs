@@ -92,7 +92,7 @@ pub struct EquationConstraint
     pub b_constraint: ExpressionNumberConstraint,
     pub b2_constraint: ExpressionNumberConstraint,
     pub c_constraint: ExpressionNumberConstraint,
-    pub operator: HashMap<u8, bool>, // TODO: Should really be a count
+    pub operator: HashMap<u8, RangeInclusive<u32>>,
     pub num_ops: RangeInclusive<u32>,
 }
 
@@ -112,16 +112,14 @@ impl Default for EquationConstraint {
 
 impl EquationConstraint {
     pub fn accept(&self, eq: &Equation) -> Result<(),NoMatchFound> {
-        let op_allowed = |op: &Box<dyn ExpressionOperator>| self.operator.get(&op.as_char_byte()).unwrap_or(&true);
-
         let accept_a_op1_b = |a: &ExpressionNumber, op1: &Box<dyn ExpressionOperator>, b: &ExpressionNumber, num_operators: &u32| {
             self.a_constraint.accept(&a)?;
             self.b_constraint.accept(&b)?;
             if !self.num_ops.contains(&num_operators) { // 1 operator
                 return Err(NoMatchFound { message: format!("Equation had 1 operator: {}", self)});
             }
-            if !op_allowed(&op1) {
-                return Err(NoMatchFound { message: format!("Equation had disallowed operator: {}", self)});
+            if !self.can_have_op(&op1) {
+                return Err(NoMatchFound { message: format!("Equation had disallowed operator {}: {}", &op1, self)});
             }
             Ok(())
         };
@@ -134,7 +132,7 @@ impl EquationConstraint {
             [ExpressionPart::Number(a), ExpressionPart::Operator(op1), ExpressionPart::Number(b), ExpressionPart::Operator(op2), ExpressionPart::Number(b2)] => {
                 accept_a_op1_b(&a, &op1, &b, &2)?;
                 self.b2_constraint.accept(&b2)?;
-                if !op_allowed(&op2) {
+                if !self.can_have_op(&op2) {
                     return Err(NoMatchFound { message: format!("Equation had disallowed operator: {}", &self)});
                 }
             },
@@ -145,6 +143,16 @@ impl EquationConstraint {
         }
         Ok(())
     }
+
+    pub fn can_have_op_byte(&self, byte: u8) -> bool {
+        self.operator.get(&byte).map(|range| range.end() >= &1).unwrap_or(true)
+    }
+
+    pub fn can_have_op(&self, op: &Box<dyn ExpressionOperator>) -> bool {
+        let op_str = op.to_string();
+        let byte = op_str.as_bytes().iter().next().unwrap();
+        self.can_have_op_byte(*byte)
+    }
 }
 
 impl fmt::Display for EquationConstraint {
@@ -152,14 +160,14 @@ impl fmt::Display for EquationConstraint {
         write!(f, "{}-{} Operator(s), (", self.num_ops.start(), self.num_ops.end())?;
         for (key, ent) in self.operator.iter() {
             match *key as char {
-                '+' | '-' | '/' | '*' => if *ent { write!(f, "{} ", *key as char)?; },
+                '+' | '-' | '/' | '*' => if ent.end() > &0 { write!(f, "{}[{}-{}] ", *key as char, ent.start(), ent.end())?; },
                 _ => { }
             }
         }
         write!(f, ") and not (")?;
         for (key, ent) in self.operator.iter() {
             match *key as char {
-                '+' | '-' | '/' | '*' => if !*ent { write!(f, "{} ", *key as char)?; },
+                '+' | '-' | '/' | '*' => if ent.end() == &0 { write!(f, "{} ", *key as char)?; },
                 _ => { }
             }
         }
