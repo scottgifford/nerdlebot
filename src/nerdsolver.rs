@@ -160,14 +160,20 @@ impl NerdleSolver {
 
         let data = self.data.borrow();
 
+        let mut min_ops = 0;
+        let mut max_ops = 2;
         for op in OPERATOR_STR.as_bytes().iter() {
             match data.char_info.get(op) {
                 Some(info) => {
-                    constraint.operator.insert(*op, info.min_count..=min(info.max_count,NERDLE_MAX_OPS));
+                    let max_count = min(info.max_count, NERDLE_MAX_OPS);
+                    min_ops += info.min_count;
+                    max_ops += max_count;
+                    constraint.operator.insert(*op, info.min_count..=max_count);
                 }
                 None => { }
             }
         }
+        constraint.num_ops = min_ops..=min(max_ops, NERDLE_MAX_OPS);
 
         match data.equal_pos {
             Some(pos) => {
