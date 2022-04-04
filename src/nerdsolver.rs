@@ -255,11 +255,17 @@ impl NerdleSolver {
             },
             (Some(op1_pos), None, Some(equal_pos)) => {
                 // op1_pos >= 3, there may or may not be another operator before op1_pos
+                // max digits for b and b2 is 2, possibilities are:
+                //    v Position 3
+                //     v Position 4 - Can't be after this, not enough room for =
+                // a+b+B=cc
+                // a+bb+B=c
+                // aaa-bb=c
+                // a+b+BB=c
                 // println!("Pattern 3a: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
                 constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, true, false, "a");
-                // TODO: I think this is 2 not MAX_DIGITS but can't prove it!
-                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, false, "b");
-                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
+                constraint.b_constraint = self.constraint_for_digits(2, None, true, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits(2, None, true, false, "b2");
                 constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
             },
             (Some(op1_pos), _, _) if op1_pos < 3 => {
