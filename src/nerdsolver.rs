@@ -176,7 +176,7 @@ impl NerdleSolver {
         match data.equal_pos {
             Some(pos) => {
                 let digits = NERDLE_CHARACTERS as usize - pos - 1;
-                let range = range_for_digits(digits);
+                let range = range_for_digits(digits, true);
                 let description = format!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
                 // TODO: Also add a callback with a regex of acceptable characters
                 constraint.c_constraint = ExpressionNumberConstraint {
@@ -222,49 +222,49 @@ impl NerdleSolver {
         match (op1_pos_opt, op2_pos_opt, data.equal_pos) {
             (Some(op1_pos), Some(op2_pos), Some(equal_pos)) => {
                 // println!("Pattern 1: op1_pos={}, op2_pos={}, equal_pos={}", op1_pos, op2_pos, equal_pos);
-                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
-                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, "b");
-                constraint.b2_constraint = self.constraint_for_digits_start_end(op2_pos, equal_pos, false, "b2");
-                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, "c");
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits_start_end(op2_pos, equal_pos, false, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
                 constraint.num_ops = 2..=2;
             },
             (Some(op1_pos), Some(op2_pos), None) => {
                 // println!("Pattern 2: op1_pos={}, op2_pos={}", op1_pos, op2_pos);
-                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
-                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, "b");
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, false, "b");
                 constraint.num_ops = 2..=2;
             },
             (Some(op1_pos), _, Some(equal_pos)) if op1_pos < 3 => {
                 // op1_pos < 3, we know there is not another operator before op1_pos
                 // println!("Pattern 3: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
-                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
-                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, equal_pos, true, "b");
-                // constraint.b2_constraint = self.constraint_for_digits_or_less(op_equal_pos - op1_pos - 1, "b2");
-                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, "c");
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, equal_pos, true, false, "b");
+                // constraint.b2_constraint = self.constraint_for_digits_or_less(op_equal_pos - op1_pos - 1, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
             },
             (Some(op1_pos), None, Some(equal_pos)) => {
                 // op1_pos >= 3, there may or may not be another operator before op1_pos
                 // println!("Pattern 3a: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
-                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, true, "a");
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, true, false, "a");
                 // TODO: I think this is 2 not MAX_DIGITS but can't prove it!
-                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, "b");
-                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, "b2");
-                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, "c");
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
             },
             (Some(op1_pos), _, _) if op1_pos < 3 => {
                 // println!("Pattern 4: op1_pos={}", op1_pos);
-                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, "a");
-                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, "b");
-                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, "b2");
-                constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, "c");
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, true, "c");
             },
             // TODO: Lots more combinations
             _ => {
                 // println!("Pattern 99");
-                constraint.a_constraint = self.constraint_for_digits(max_digits, Some(0), true, "a");
-                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, "b");
-                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, "b2");
-                constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, "c");
+                constraint.a_constraint = self.constraint_for_digits(max_digits, Some(0), true, false, "a");
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, true, "c");
             }
         }
 
@@ -577,7 +577,7 @@ impl NerdleSolver {
         ret
     }
 
-    fn constraint_for_digits_start_end(&self, start: usize, end: usize, min: bool, name: &str) -> ExpressionNumberConstraint {
+    fn constraint_for_digits_start_end(&self, start: usize, end: usize, min: bool, allow_zero: bool, name: &str) -> ExpressionNumberConstraint {
         // println!("constraint_for_digits_start_end(&self, {}, {}, {}, {})", &start, &end, &min, &name);
         let (start, digits) = if start == 0 {
             (0, end)
@@ -585,15 +585,15 @@ impl NerdleSolver {
             (start + 1, end - start - 1)
         };
 
-        self.constraint_for_digits(digits, Some(start), min, name)
+        self.constraint_for_digits(digits, Some(start), min, allow_zero, name)
     }
 
-    fn constraint_for_digits(&self, digits: usize, start: Option<usize>, min: bool, name: &str) -> ExpressionNumberConstraint {
+    fn constraint_for_digits(&self, digits: usize, start: Option<usize>, min: bool, allow_zero: bool, name: &str) -> ExpressionNumberConstraint {
         // println!("Finding constraints for {}", &name);
         let range = if min {
-            range_for_digits_or_less(digits)
+            range_for_digits_or_less(digits, allow_zero)
         } else {
-            range_for_digits(digits)
+            range_for_digits(digits, allow_zero)
         };
         let regex = match start {
             Some(start) => self.regex_for_digits_at(start, digits, min),
@@ -711,9 +711,14 @@ impl fmt::Display for NerdleSolver {
     }
 }
 
-fn range_for_digits(digits: usize) -> RangeInclusive<i32> {
+fn range_for_digits(digits: usize, allow_zero: bool) -> RangeInclusive<i32> {
+    let single_digit_range_start = if allow_zero {
+        0
+    } else {
+        1
+    };
     match digits {
-        1 => 1..=9,
+        1 => single_digit_range_start..=9,
         2 => 10..=99,
         3 => 100..=999,
         4 => 1000..=9999,
@@ -721,12 +726,17 @@ fn range_for_digits(digits: usize) -> RangeInclusive<i32> {
     }
 }
 
-fn range_for_digits_or_less(digits: usize) -> RangeInclusive<i32> {
+fn range_for_digits_or_less(digits: usize, allow_zero: bool) -> RangeInclusive<i32> {
+    let single_digit_range_start = if allow_zero {
+        0
+    } else {
+        1
+    };
     match digits {
-        1 => 1..=9,
-        2 => 1..=99,
-        3 => 1..=999,
-        4 => 1..=9999,
-        _ => 1..=NERDLE_NUM_MAX,
+        1 => single_digit_range_start..=9,
+        2 => single_digit_range_start..=99,
+        3 => single_digit_range_start..=999,
+        4 => single_digit_range_start..=9999,
+        _ => single_digit_range_start..=NERDLE_NUM_MAX,
     }
 }
