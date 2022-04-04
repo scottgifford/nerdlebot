@@ -232,6 +232,7 @@ fn main() -> Result<(), CommandLineError> {
 
             for i in 0..count {
                 println!("=== Playing game {} / {}", i, count);
+                let start_time = Instant::now();
 
                 let mut solver = NerdleSolver::new();
                 let answer = skip_fail!(eqgen(), "Failed to generate equation");
@@ -268,6 +269,7 @@ fn main() -> Result<(), CommandLineError> {
                     losses += 1;
                     println!("I lost");
                 }
+                println!("Game {} completed in {:?}", i, start_time.elapsed());
             }
             println!("Played {} games", count);
             println!("       {} failures", count - wins - losses);
