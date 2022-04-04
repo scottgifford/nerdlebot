@@ -236,6 +236,15 @@ impl NerdleSolver {
                 constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, op2_pos, false, false, "b");
                 constraint.num_ops = 2..=2;
             },
+            (Some(op1_pos), None, Some(equal_pos)) if op1_pos < 3 && (equal_pos - op1_pos) <= 3 => {
+                // (equal_pos - p1_pos) < 3, must be just one op
+                // println!("Pattern 3b: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
+                // TODO: I think this is 2 not MAX_DIGITS but can't prove it!
+                constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, equal_pos, false, false, "b");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
+                constraint.num_ops = 1..=1;
+            },
             (Some(op1_pos), _, Some(equal_pos)) if op1_pos < 3 => {
                 // op1_pos < 3, we know there is not another operator before op1_pos
                 // println!("Pattern 3: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
