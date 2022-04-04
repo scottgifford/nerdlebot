@@ -2,6 +2,7 @@ use crate::eq::Equation;
 // use crate::expr;
 use std::fmt;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use crate::expr;
 
@@ -31,7 +32,7 @@ pub const NERDLE_A_MAX: i32 = 999; // TODO: Might even be 9999
 // pub const NERDLE_A_MAX: i32 = 999;
 
 pub fn nerdle_str(guess: &str, answer: &str) -> Result<NerdleResult, NerdleError> {
-    let mut result = NerdleResult { positions: [NerdlePositionResult::Gray; NERDLE_CHARACTERS as usize] };
+    let mut result = NerdleResult::default();
 
     if guess.len() != NERDLE_CHARACTERS as usize {
         return Err(NerdleError { message: format!("Guess is {} characters but must be {}", guess.len(), NERDLE_CHARACTERS)})
@@ -116,6 +117,14 @@ pub struct NerdleResult {
     pub positions: [NerdlePositionResult; NERDLE_CHARACTERS as usize],
 }
 
+impl Default for NerdleResult {
+    fn default() -> Self {
+        NerdleResult {
+            positions: [NerdlePositionResult::Gray; NERDLE_CHARACTERS as usize],
+        }
+    }
+}
+
 impl NerdleResult {
     pub fn won(&self) -> bool {
         for pos in 0..(NERDLE_CHARACTERS as usize) {
@@ -125,6 +134,30 @@ impl NerdleResult {
             }
         }
         true
+    }
+}
+
+impl FromStr for NerdleResult {
+    type Err = NerdleError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut res = NerdleResult::default();
+        // TODO: Do this at another layer
+        let input = &input.trim();
+        if input.len() != NERDLE_CHARACTERS as usize {
+            return Err(NerdleError { message: format!("Answer had {} characters instead of {}", input.len(), NERDLE_CHARACTERS)});
+        }
+        for (i, ch) in input.trim().as_bytes().iter().enumerate() {
+            let ch = *ch as char;
+            res.positions[i] = match ch {
+                'y' | 'Y' => NerdlePositionResult::Yellow,
+                'g' | 'G' => NerdlePositionResult::Green,
+                '-' => NerdlePositionResult::Gray,
+                _ => return Err(NerdleError { message: format!("Answer '{}' had invalid character '{}'", &input, ch)})
+            }
+        }
+
+        Ok(res)
     }
 }
 

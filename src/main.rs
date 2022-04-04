@@ -19,7 +19,7 @@ use crate::eq::Equation;
 use crate::expr::Expression;
 use crate::eqgen::eqgen;
 use crate::nerdsolver::NerdleSolver;
-use crate::nerdle::{NERDLE_CHARACTERS};
+use crate::nerdle::{NerdleResult, NERDLE_CHARACTERS};
 
 #[derive(Clone)]
 pub struct CommandLineError {
@@ -435,6 +435,55 @@ fn main() -> Result<(), CommandLineError> {
             Ok(())
         },
 
+        // TODO: Lots of duplicated code
+        Some("interactive") => {        
+            let mut solver = NerdleSolver::new();
+
+            let mut won = false;
+            for turn in 1..=nerdle::NERDLE_TURNS {
+                // No idea why res should be mut but not guess?..
+                let guess;
+                let mut res;
+                loop {
+                    guess = match std::env::args().nth(2 + turn as usize) {
+                        Some(guess) => match Equation::from_str(&guess) {
+                            Ok(guess) => guess,
+                            Err(err) => return Err(CommandLineError { message: format!("Invalid guess equation in command-line arg {} '{}': {}", 2+turn, guess, err) } )
+                        }
+                        None => skip_fail!(solver.take_guess(), "No valid guess was generating, trying again")
+                    };
+                    println!("Turn {}  Guess: {}", turn, &guess);
+                    match solver.eq_matches(&guess) {
+                        Ok(()) => { },
+                        Err(why) => println!("Equation is impossible because {}", why)
+                    }
+                    res = loop {
+                        println!("Turn {} Enter Result:", turn);
+                        let mut input = String::new();
+                        skip_fail!(io::stdin().read_line(&mut input), "Read error, try again");
+                        let cleanput = input.trim();
+                        res = skip_fail!(NerdleResult::from_str(cleanput), "Invalid entry");
+                        break res;
+                    };
+                    break;
+                }
+
+                println!("Turn {} Result: {}", turn, &res);
+                pretty_print_result(&guess.to_string(), &res);
+                if res.won() {
+                    won = true;
+                    println!("I won in {} turns!", turn);
+                    break;
+                }
+                solver.update(&guess, &res);
+                solver.print_hint();
+            }
+            if !won {
+                println!("I lost");
+            }
+
+            Ok(())
+        },
         Some(oops) => Err(CommandLineError { message: format!("Unrecognized command '{}'", oops) } ),
 
         None => Err(CommandLineError { message: format!("Missing command line flag") } ),
