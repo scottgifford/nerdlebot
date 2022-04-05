@@ -160,6 +160,16 @@ impl ExpressionPart {
             ExpressionPart::Operator(op) => op.len(),
         }
     }
+
+    pub fn from_char_byte(char_byte: &u8) -> Result<ExpressionPart, InvalidExpressionError> {
+        match char_byte {
+            b'+' => Ok(ExpressionPart::Operator(Box::new(ExpressionOperatorPlus { }))),
+            b'-' => Ok(ExpressionPart::Operator(Box::new(ExpressionOperatorMinus { }))),
+            b'*' => Ok(ExpressionPart::Operator(Box::new(ExpressionOperatorTimes { }))),
+            b'/' => Ok(ExpressionPart::Operator(Box::new(ExpressionOperatorDivide { }))),
+            _ => Err(InvalidExpressionError { message: format!("Cannot parse unrecognized operator character '{}'", *char_byte as char) })
+        }
+    }
 }
 
 
@@ -188,6 +198,19 @@ pub enum ExpressionOperatorEnum {
     Minus,
     Times,
     Divide,
+}
+
+impl ExpressionOperatorEnum {
+    pub fn from_char_byte(char_byte: &u8) -> Result<ExpressionOperatorEnum, InvalidExpressionError> {
+        match char_byte {
+            b'+' => Ok(ExpressionOperatorEnum::Plus),
+            b'-' => Ok(ExpressionOperatorEnum::Minus),
+            b'*' => Ok(ExpressionOperatorEnum::Times),
+            b'/' => Ok(ExpressionOperatorEnum::Divide),
+            _ => Err(InvalidExpressionError { message: format!("Cannot parse unrecognized operator character '{}'", *char_byte as char) })
+        }
+    }
+
 }
 
 impl Distribution<ExpressionOperatorEnum> for Standard {
@@ -379,11 +402,7 @@ impl FromStr for Expression {
                     in_num = false;
                     match item {
                         b' ' | b'\n' | b'\r' => { } // No-op (but already ended number)
-                        b'+' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorPlus { }))),
-                        b'-' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorMinus { }))),
-                        b'*' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorTimes { }))),
-                        b'/' => parts.push(ExpressionPart::Operator(Box::new(ExpressionOperatorDivide { }))),
-                        _ =>  return Err(InvalidExpressionError { message: format!("Cannot parse unrecognized character '{}'", item as char) }),
+                        ch => parts.push(ExpressionPart::from_char_byte(&ch)?),
                     }
                 }
             }
