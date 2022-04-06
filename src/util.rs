@@ -22,3 +22,13 @@ where
         Ok(rng.gen_range(range))
     }
 }
+
+#[test]
+fn range_rand_or_only_test() {
+    assert_eq!(3, range_rand_or_only::<u32>(3..=3).unwrap());
+    for _i in 0..100 {
+        let x = range_rand_or_only::<u32>(1..=10).unwrap();
+        assert!((1..=10).contains(&x));
+    }
+    assert!(!range_rand_or_only::<u32>(3..=2).is_ok());
+}
