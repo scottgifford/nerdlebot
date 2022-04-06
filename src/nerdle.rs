@@ -141,8 +141,6 @@ impl FromStr for NerdleResult {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut res = NerdleResult::default();
-        // TODO: Do this at another layer
-        let input = &input.trim();
         if input.len() != NERDLE_CHARACTERS as usize {
             return Err(NerdleError { message: format!("Answer had {} characters instead of {}", input.len(), NERDLE_CHARACTERS)});
         }
