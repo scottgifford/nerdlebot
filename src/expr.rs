@@ -210,7 +210,18 @@ impl ExpressionOperatorEnum {
             _ => Err(InvalidExpressionError { message: format!("Cannot parse unrecognized operator character '{}'", *char_byte as char) })
         }
     }
+    pub fn to_char_byte(&self) -> u8 {
+        self.to_char() as u8
+    }
 
+    pub fn to_char(&self) -> char {
+        match self {
+            ExpressionOperatorEnum::Plus => '+',
+            ExpressionOperatorEnum::Minus => '-',
+            ExpressionOperatorEnum::Times => '*',
+            ExpressionOperatorEnum::Divide => '/',
+        }
+    }
 }
 
 impl Distribution<ExpressionOperatorEnum> for Standard {
@@ -227,12 +238,7 @@ impl Distribution<ExpressionOperatorEnum> for Standard {
 
 impl fmt::Display for ExpressionOperatorEnum {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            ExpressionOperatorEnum::Plus => "+",
-            ExpressionOperatorEnum::Minus => "-",
-            ExpressionOperatorEnum::Times => "*",
-            ExpressionOperatorEnum::Divide => "/",
-        })
+        write!(f, "{}", self.to_char())
     }
 }
 
