@@ -3,6 +3,8 @@ use std::str::FromStr;
 use rand::Rng;
 use rand::distributions::{Distribution, Standard};
 
+use crate::util::num_digits;
+
 #[derive(Clone)]
 pub struct InvalidExpressionError {
     message: String,
@@ -183,9 +185,8 @@ impl fmt::Display for ExpressionNumber {
 }
 
 impl ExpressionNumber {
-    // TODO: Inefficient
     pub fn len(&self) -> usize {
-        return self.to_string().len();
+        num_digits(self.value) as usize
     }
 }
 
