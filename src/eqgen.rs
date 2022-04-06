@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use crate::eq::Equation;
 use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX};
@@ -147,65 +148,321 @@ pub fn eqgen() -> Result<Equation, NoMatchFound> {
 }
 
 fn gen_ops(constraint: &EquationConstraint) -> Result<(ExpressionOperatorEnum, Option<ExpressionOperatorEnum>), NoMatchFound> {
-    // let must_have: Vec<u8> = constraint.operator.iter().filter(|(_op, info)| info.start() > &0).map(|(op, _info)| *op).collect();
-    // let may_have: Vec<u8> = constraint.operator.iter().filter(|(_op, info)| info.end() > &0).map(|(op, _info)| *op).collect();
-
-    // fn b2op(b: &u8) -> Result<ExpressionOperatorEnum, NoMatchFound> {
-    //     match ExpressionOperatorEnum::from_char_byte(&b) {
-    //         Ok(op) => Ok(op),
-    //         Err(err) => Err(NoMatchFound { message: format!("Invalid operator: {}", err)})
-    //     }
-    // }
-
-    let num_ops_range = &constraint.num_ops;
-    let num_ops = if num_ops_range.start() == num_ops_range.end() {
-        // We know how many there are
-        *(num_ops_range.start())
-    } else {
-        range_rand_or_only(constraint.num_ops.clone())?
-    };
-
-    return Ok((
-        gen_operator_constrained(&constraint),
-        if num_ops == 1 {
-            None
-        } else {
-            Some(gen_operator_constrained(&constraint))
+    let mut tries = 0;
+    return Ok(loop {
+        tries += 1;
+        if tries > ATTEMPTS {
+            return Err(NoMatchFound { message: format!("Could not find operator after {} tries for constraint {}", tries, &constraint)})
         }
-    ));
-    // let op1 = gen_operator_constrained(&constraint);
-    // let op
-    // if num_ops == 1 {
-    //     if must_have.len() > 0 {
-    //         // TODO: Randomly choose order
-    //         return Ok((b2op(&must_have[0])?, None));
-    //     } else {
-    //         return Ok((b2op(&may_have[0])?, None));
-    //     }
-    // } else {
-    //     // 2 operators
-    //     if must_have.len() == 2 {
-    //         // We can just choose the order
-    //         // TODO: Randomly choose order
-    //         return Ok((b2op(&must_have[0])?, Some(b2op(&must_have[1])?)));
-    //     } else if must_have.len() > 0 {
-    //         // TODO: Randomly choose order
-    //         return Ok((b2op(&must_have[0])?, Some(b2op(&may_have[0])?)));
-    //     } else {
-    //         return Ok((b2op(&may_have[0])?, Some(b2op(&may_have[1])?)));
-    //     }
-    // }
-}
 
-pub fn gen_operator_constrained(constraint: &EquationConstraint) -> ExpressionOperatorEnum {
-    loop {
-        let tmp_op: ExpressionOperatorEnum = rand::random();
-        let tmp_op_ch = tmp_op.to_string().as_bytes()[0];
-        if !constraint.can_have_op_byte(tmp_op_ch) {
-            // println!("Rejected operator '{}' because it's been ruled out", tmp_op_ch as char);
+        let num_ops = range_rand_or_only(constraint.num_ops.clone())?;
+
+        let (op1, op2_opt): (ExpressionOperatorEnum, Option<ExpressionOperatorEnum>) =
+            if num_ops == 1 {
+                ( rand::random(), None )
+            } else {
+                ( rand::random(), Some(rand::random()) )
+            }
+        ;
+
+        if are_ops_ok(&op1, &op2_opt, &constraint, tries) {
+            break (op1, op2_opt);
+        } else {
             continue;
         }
-        // println!("Accepted operator '{}'", tmp_op_ch as char);
-        break tmp_op;
+    })
+}
+
+fn are_ops_ok(op1: &ExpressionOperatorEnum, op2_opt: &Option<ExpressionOperatorEnum>, constraint: &EquationConstraint, _tries: u32) -> bool {
+    let mut op_count: HashMap<u8, u32> = HashMap::new();
+    op_count.insert(op1.to_char_byte(), 1);
+    match &op2_opt {
+        Some(op2) => {
+            let count = op_count.entry(op2.to_char_byte()).or_insert(0);
+            *count += 1;
+        },
+        None => { }
     }
+
+    // let op2_str = || match &op2_opt {
+    //     Some(op2) => op2.to_string(),
+    //     None => String::from("None")
+    // };
+
+    for (op, info) in constraint.operator.iter() {
+        match op_count.get(op) {
+            None => {
+                if info.start() >= &1 {
+                    // println!("Rejected case 1 operators ({}, {}) on try {}: operator {} should appear at least {} times but appeared {}, constraint: {}",
+                    //     &op1, op2_str(), tries,
+                    //     *op as char, info.start(), "none",
+                    //     &constraint);
+                    return false
+                } else {
+                    // println!("Passed case 1 operators ({}, {}) on try {}: operator {} should appear at least {} times and appeared {}, constraint: {}",
+                    //     &op1, op2_str(), tries,
+                    //     *op as char, info.start(), "none",
+                    //     &constraint);
+                }
+            },
+            Some(count) => {
+                if count < info.start() || count > info.end() {
+                    // println!("Rejected case 2 operators ({}, {}) on try {}: operator {} should appear between {} and {} times and appeared {}, constraint {}",
+                    //     &op1, op2_str(), tries,
+                    //     *op as char, info.start(), info.end(), count,
+                    //     &constraint);
+                    return false;
+                } else {
+                    // println!("Passed case 2 operators ({}, {}) on try {}: operator {} should appear between {} and {} times and appeared {}, constraint {}",
+                    //     &op1, op2_str(), tries,
+                    //     *op as char, info.start(), info.end(), count,
+                    //     &constraint);
+                }
+            }
+        }
+    }
+
+    // println!("Accepted operators ({}, {}) on try {} from constraint: {}", &op1, op2_str(), tries, &constraint);
+    true
+}
+
+#[cfg(test)]
+#[test]
+fn are_ops_ok_test() {
+    // Simple cases with no constraints
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &None,
+        &EquationConstraint::default(),
+        1
+    ));
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Minus,
+        &None,
+        &EquationConstraint::default(),
+        1
+    ));
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Divide,
+        &None,
+        &EquationConstraint::default(),
+        1
+    ));
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Times,
+        &None,
+        &EquationConstraint::default(),
+        1
+    ));
+
+
+    // Simple cases where operators meet constraints
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &None,
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('+' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Minus,
+        &None,
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('-' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Divide,
+        &None,
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('/' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Times,
+        &None,
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('*' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    // Must appear once, and appears in second operator
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Minus,
+        &Some(ExpressionOperatorEnum::Plus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('+' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Minus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('-' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Divide),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('/' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Times),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('*' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    // Must appear twice, and does
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Plus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('+' as u8, 2..=2),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Minus,
+        &Some(ExpressionOperatorEnum::Minus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('-' as u8, 2..=2),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Divide,
+        &Some(ExpressionOperatorEnum::Divide),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('/' as u8, 2..=2),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(are_ops_ok(
+        &ExpressionOperatorEnum::Times,
+        &Some(ExpressionOperatorEnum::Times),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('*' as u8, 2..=2),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    // Operator does not appear but must
+    assert!(!are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &None,
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('-' as u8, 1..=1),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    // Operator appears but must not
+    assert!(!are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Minus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('+' as u8, 0..=0),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(!are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Minus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('-' as u8, 0..=0),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    // Operator appears once but must appear twice
+    assert!(!are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Minus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('-' as u8, 2..=2),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
+
+    assert!(!are_ops_ok(
+        &ExpressionOperatorEnum::Plus,
+        &Some(ExpressionOperatorEnum::Minus),
+        &EquationConstraint {
+            operator: HashMap::from([
+                ('+' as u8, 2..=2),
+            ]),
+            ..Default::default()
+        },
+        1
+    ));
 }
