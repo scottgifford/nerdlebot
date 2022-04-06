@@ -241,18 +241,25 @@ impl fmt::Display for ExpressionOperatorEnum {
 }
 
 
-pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Display + fmt::Debug {
+pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Debug {
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError>;
+
     fn len(&self) -> usize {
         1
     }
+
     fn precedence(&self) -> u8;
-    fn as_char(&self) -> char {
-        // TODO: Invert this implementation
-        self.to_string().chars().next().expect("Operator string had no chars?!")
-    }
+
+    fn as_char(&self) -> char;
+
     fn as_char_byte(&self) -> u8 {
         self.as_char() as u8
+    }
+}
+
+impl fmt::Display for dyn ExpressionOperator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.as_char())
     }
 }
 
@@ -283,16 +290,13 @@ impl Clone for Box<dyn ExpressionOperator> {
 pub struct ExpressionOperatorPlus {
 }
 
-impl fmt::Display for ExpressionOperatorPlus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "+")
-    }
-}
-
-
 impl ExpressionOperator for ExpressionOperatorPlus {
     fn precedence(&self) -> u8 {
         1
+    }
+
+    fn as_char(&self) -> char {
+        '+'
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
@@ -308,17 +312,14 @@ pub struct ExpressionOperatorMinus {
 
 }
 
-impl fmt::Display for ExpressionOperatorMinus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "-")
-    }
-}
-
 impl ExpressionOperator for ExpressionOperatorMinus {
     fn precedence(&self) -> u8 {
         1
     }
 
+    fn as_char(&self) -> char {
+        '-'
+    }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
         let value = a.value.checked_sub(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} - {}", a, b)} )?;
@@ -332,15 +333,13 @@ impl ExpressionOperator for ExpressionOperatorMinus {
 pub struct ExpressionOperatorTimes {
 }
 
-impl fmt::Display for ExpressionOperatorTimes {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "*")
-    }
-}
-
 impl ExpressionOperator for ExpressionOperatorTimes {
     fn precedence(&self) -> u8 {
         0
+    }
+
+    fn as_char(&self) -> char {
+        '*'
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
@@ -356,16 +355,15 @@ pub struct ExpressionOperatorDivide {
 
 }
 
-impl fmt::Display for ExpressionOperatorDivide {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "/")
-    }
-}
-
 impl ExpressionOperator for ExpressionOperatorDivide {
     fn precedence(&self) -> u8 {
         0
     }
+
+    fn as_char(&self) -> char {
+        '/'
+    }
+
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
         let rem = a.value.checked_rem(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} / {}", a, b)} )?;
