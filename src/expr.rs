@@ -32,7 +32,6 @@ pub struct Expression {
 
 impl Expression {
     pub fn calculate(&self) -> Result<ExpressionNumber, InvalidExpressionError> {
-        // TODO: Is this efficient?
         let first_parts = &self.parts;
         let mut next_parts: Vec<ExpressionPart> = Vec::new();
         let mut next_parts_2: Vec<ExpressionPart> = Vec::new();
@@ -146,7 +145,6 @@ pub enum ExpressionPart {
 impl fmt::Display for ExpressionPart {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            // TODO: Can this be simplified?
             ExpressionPart::Number(num) => write!(f, "{}", num),
             ExpressionPart::Operator(op) => write!(f, "{}", op),
         }

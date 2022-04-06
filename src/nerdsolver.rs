@@ -180,7 +180,6 @@ impl NerdleSolver {
                 let digits = NERDLE_CHARACTERS as usize - pos - 1;
                 let range = range_for_digits(digits, true);
                 let description = format!("Updating c_range to {}..={} because = is in pos {} leaving {} digits", range.start(), range.end(), pos, digits);
-                // TODO: Also add a callback with a regex of acceptable characters
                 constraint.c_constraint = ExpressionNumberConstraint {
                     range,
                     description,
@@ -240,7 +239,6 @@ impl NerdleSolver {
                 // (equal_pos - p1_pos) < 3, must be just one op
                 // println!("Pattern 3b: op1_pos={}, equal_pos={}", op1_pos, equal_pos);
                 constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
-                // TODO: I think this is 2 not MAX_DIGITS but can't prove it!
                 constraint.b_constraint = self.constraint_for_digits_start_end(op1_pos, equal_pos, false, false, "b");
                 constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
                 constraint.num_ops = 1..=1;
