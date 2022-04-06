@@ -233,9 +233,10 @@ impl NerdleSolver {
                 constraint.b2_constraint = self.constraint_for_digits(2, None, true, false, "b2");
                 constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
             },
-            (Some(op1_pos), _, _) if op1_pos < 3 => {
-                // println!("Pattern 4: op1_pos={}", op1_pos);
-                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, false, false, "a");
+            (Some(op1_pos), _, _) => {
+                let a_must_be_before_op1 = op1_pos < 3;
+                // println!("Pattern 4: op1_pos={}, a_must_be_before_op1={}", op1_pos, a_must_be_before_op1);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, op1_pos, !a_must_be_before_op1, false, "a");
                 constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, false, "b");
                 constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
                 constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, true, "c");
