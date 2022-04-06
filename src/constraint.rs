@@ -1,7 +1,6 @@
 use std::fmt;
 use std::rc::Rc;
 use std::cmp::{min, max};
-use rand::Rng;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
@@ -67,8 +66,7 @@ impl fmt::Display for ExpressionNumberConstraint
     }
 }
 
-// TODO: No longer need rng object
-pub fn find_num_with_constraint(_rng: &mut impl Rng, constraint: &ExpressionNumberConstraint) -> Result<ExpressionNumber, NoMatchFound>
+pub fn find_num_with_constraint(constraint: &ExpressionNumberConstraint) -> Result<ExpressionNumber, NoMatchFound>
 {
     for _try in 1..ATTEMPTS {
         let candidate = match range_rand_or_only(constraint.range.clone()) {

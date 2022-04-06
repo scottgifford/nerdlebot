@@ -23,8 +23,6 @@ macro_rules! skip_fail {
 }
 
 pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, NoMatchFound> {
-    let mut rng = rand::thread_rng();
-
     // println!("Incoming constraint: {}", constraint);
 
     for _try in 1..ATTEMPTS {
@@ -53,7 +51,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             ..Default::default()
         };
         let a_constraint = &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint);
-        let a = skip_fail!(find_num_with_constraint(&mut rng, a_constraint), "Failed to generate a");
+        let a = skip_fail!(find_num_with_constraint(a_constraint), "Failed to generate a");
         // println!("Generated a {} from constraint: {}", a, &a_constraint);
 
         let mut b_base_constraint = ExpressionNumberConstraint {
@@ -78,7 +76,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             _ => { },
         };
         let b_constraint = &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint);
-        let b = skip_fail!(find_num_with_constraint(&mut rng, &b_constraint), "Failed to generate b");
+        let b = skip_fail!(find_num_with_constraint(&b_constraint), "Failed to generate b");
 
         parts.push(ExpressionPart::Number(a));
         parts.push(op2op(&op1));
@@ -93,7 +91,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
                     description: format!("{}..={}", operand_range.start(), operand_range.end()),
                     ..Default::default()
                 };
-                let b2 = find_num_with_constraint(&mut rng, &ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
+                let b2 = find_num_with_constraint(&ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
                 parts.push(ExpressionPart::Number(b2));
             },
             None => { }
