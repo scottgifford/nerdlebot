@@ -241,6 +241,13 @@ impl NerdleSolver {
                 constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
                 constraint.c_constraint = self.constraint_for_digits(max_digits, None, true, true, "c");
             },
+            (_, _, Some(equal_pos)) => {
+                // println!("Pattern 90: equal_pos = {}", equal_pos);
+                constraint.a_constraint = self.constraint_for_digits_start_end(0, min(equal_pos, max_digits), true, false, "a");
+                constraint.b_constraint = self.constraint_for_digits(max_digits, None, true, false, "b");
+                constraint.b2_constraint = self.constraint_for_digits(max_digits, None, true, false, "b2");
+                constraint.c_constraint = self.constraint_for_digits_start_end(equal_pos, NERDLE_CHARACTERS as usize, false, true, "c");
+            },
             // TODO: Lots more combinations
             _ => {
                 // println!("Pattern 99");
@@ -334,6 +341,21 @@ impl NerdleSolver {
                 (*ent).max_count = *count;
             }
         }
+
+        // If we have eliminated all other possibilities, explicitly set remaining item to find, to simplify logic later
+        for pos in 0..(NERDLE_CHARACTERS as usize) {
+            let poss = NerdleSolver::possibilities_for_pos_data(&data, pos);
+            if poss.len() == 1 {
+                let ch = poss.iter().next().unwrap();
+
+                let mut char_info = data.char_info.entry(*ch).or_insert(NerdleCharInfo::new());
+                (*char_info).min_count = max((*char_info).min_count, 1);
+                (*char_info).positions[pos] = NerdleIsChar::Definitely;
+
+                let pos_data = &mut data.positions[pos];
+                pos_data.insert(*ch, true);
+            }
+        }
     }
 
     pub fn print_hint(&self) {
@@ -384,9 +406,7 @@ impl NerdleSolver {
         }
     }
 
-    fn possibilities_for_pos(&self, pos: usize) -> HashSet<u8> {
-        let data = self.data.borrow();
-
+    fn possibilities_for_pos_data(data: &NerdleSolverData, pos: usize) -> HashSet<u8> {
         // TODO: Move to state or something?  Or maybe this should be done up update() to pre-calculate all this?
         let mut known_pos: HashMap<u8, u32> = HashMap::new();
         for (key, val) in data.char_info.iter() {
@@ -426,6 +446,10 @@ impl NerdleSolver {
         }
 
         ret
+    }
+
+    fn possibilities_for_pos(&self, pos: usize) -> HashSet<u8> {
+        NerdleSolver::possibilities_for_pos_data(&self.data.borrow(), pos)
     }
 
     fn constraint_for_digits_start_end(&self, start: usize, end: usize, min: bool, allow_zero: bool, name: &str) -> ExpressionNumberConstraint {
