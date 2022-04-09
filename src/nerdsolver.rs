@@ -167,21 +167,15 @@ impl NerdleSolver {
             _ => {}
         };
 
-        let is_op_at = |pos: usize| {
-            let mut ret: Option<bool> = Some(false);
-            for op in ['+','-','/','*'] {
-                match data.positions[pos].get(&(op as u8)) {
-                    Some(true) => return Some(true),
-                    Some(false) => { },
-                    None => { ret = None; },
-                }
-            }
-            ret
+        let is_op_at = |pos: usize| -> bool {
+            NerdleSolver::possibilities_for_pos_data(&data, pos)
+                .iter()
+                .all(|ch| NerdleSolver::is_op_char(*ch as char))
         };
 
-        let op1_pos_opt = (0..NERDLE_CHARACTERS as usize).find(|i| is_op_at(*i as usize).unwrap_or(false));
+        let op1_pos_opt = (0..NERDLE_CHARACTERS as usize).find(|i| is_op_at(*i as usize));
         let op2_pos_opt = match op1_pos_opt {
-            Some(op1_pos) => ((op1_pos+1)..NERDLE_CHARACTERS as usize).find(|i| is_op_at(*i as usize).unwrap_or(false)),
+            Some(op1_pos) => ((op1_pos+1)..NERDLE_CHARACTERS as usize).find(|i| is_op_at(*i as usize)),
             None => None
         };
 
@@ -403,6 +397,13 @@ impl NerdleSolver {
                 print!(" {}", **p as char);
             }
             print!("\n");
+        }
+    }
+
+    fn is_op_char(ch: char) -> bool {
+        match ch {
+            '+' | '-' | '/' | '*' => true,
+            _ => false
         }
     }
 
