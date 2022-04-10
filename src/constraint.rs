@@ -212,3 +212,33 @@ fn range_intersect_test() {
     assert_eq!(range_intersect(&(0..=10), &(10..=15)), 10..=10);
     assert!(range_intersect(&(0..=10), &(15..=20)).is_empty());
 }
+
+pub fn range_for_digits(digits: usize, allow_zero: bool) -> RangeInclusive<i32> {
+    let single_digit_range_start = if allow_zero {
+        0
+    } else {
+        1
+    };
+    match digits {
+        1 => single_digit_range_start..=9,
+        2 => 10..=99,
+        3 => 100..=999,
+        4 => 1000..=9999,
+        _ => 1..=NERDLE_NUM_MAX,
+    }
+}
+
+pub fn range_for_digits_or_less(digits: usize, allow_zero: bool) -> RangeInclusive<i32> {
+    let single_digit_range_start = if allow_zero {
+        0
+    } else {
+        1
+    };
+    match digits {
+        1 => single_digit_range_start..=9,
+        2 => single_digit_range_start..=99,
+        3 => single_digit_range_start..=999,
+        4 => single_digit_range_start..=9999,
+        _ => single_digit_range_start..=NERDLE_NUM_MAX,
+    }
+}

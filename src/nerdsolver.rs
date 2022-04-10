@@ -2,14 +2,13 @@ use std::fmt;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::cmp::{min, max};
 use regex::Regex;
 
 use crate::eq::Equation;
-use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_NUM_MAX, NERDLE_OPERAND_MAX_DIGITS, NERDLE_MAX_OPS};
+use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_OPERAND_MAX_DIGITS, NERDLE_MAX_OPS};
 use crate::eqgen::{eqgen_constrained};
-use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
+use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound, range_for_digits, range_for_digits_or_less};
 use crate::expr::{ExpressionNumber};
 
 const VALID_CHAR_STR: &str = "1234567890-+*/=";
@@ -576,32 +575,3 @@ impl fmt::Display for NerdleSolver {
     }
 }
 
-fn range_for_digits(digits: usize, allow_zero: bool) -> RangeInclusive<i32> {
-    let single_digit_range_start = if allow_zero {
-        0
-    } else {
-        1
-    };
-    match digits {
-        1 => single_digit_range_start..=9,
-        2 => 10..=99,
-        3 => 100..=999,
-        4 => 1000..=9999,
-        _ => 1..=NERDLE_NUM_MAX,
-    }
-}
-
-fn range_for_digits_or_less(digits: usize, allow_zero: bool) -> RangeInclusive<i32> {
-    let single_digit_range_start = if allow_zero {
-        0
-    } else {
-        1
-    };
-    match digits {
-        1 => single_digit_range_start..=9,
-        2 => single_digit_range_start..=99,
-        3 => single_digit_range_start..=999,
-        4 => single_digit_range_start..=9999,
-        _ => single_digit_range_start..=NERDLE_NUM_MAX,
-    }
-}
