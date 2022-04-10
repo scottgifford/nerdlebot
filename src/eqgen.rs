@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use crate::eq::Equation;
 use crate::nerdle::{NERDLE_CHARACTERS, NERDLE_A_MAX};
 use crate::expr::{Expression, ExpressionPart, ExpressionOperator, ExpressionOperatorPlus, ExpressionOperatorMinus, ExpressionOperatorTimes, ExpressionOperatorDivide, ExpressionOperatorEnum};
-use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound};
-use crate::util::range_rand_or_only;
+use crate::constraint::{find_num_with_constraint, EquationConstraint, ExpressionNumberConstraint, NoMatchFound, range_for_digits_or_less};
+use crate::util::{range_rand_or_only};
 
 const ATTEMPTS: u32 = 10000;
 
@@ -27,6 +27,7 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
 
     for _try in 1..ATTEMPTS {
         let mut parts: Vec<ExpressionPart> = Vec::new();
+        let mut remaining_chars = NERDLE_CHARACTERS as usize;
 
         let(op1, op2_opt) = gen_ops(constraint)?;
         let op2_str = match &op2_opt {
@@ -51,7 +52,10 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             ..Default::default()
         };
         let a_constraint = &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint);
+        // println!("Finding value for a");
         let a = skip_fail!(find_num_with_constraint(a_constraint), "Failed to generate a");
+        remaining_chars -= a.len();
+        remaining_chars -= 1; // op1
         // println!("Generated a {} from constraint: {}", a, &a_constraint);
 
         let mut b_base_constraint = ExpressionNumberConstraint {
@@ -59,24 +63,41 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
             description: format!("{}..={} (from op1 {}, op2 {})", operand_range.start(), operand_range.end(), &op1, &op2_str),
             ..Default::default()
         };
+
+        let b_remaining_chars = remaining_chars
+            - if op2_opt.is_some() { 2 } else { 0 } // second op and b2 (if present)
+            - 2 // =c
+        ;
+        // Reduce number range for division
         match op1 {
             ExpressionOperatorEnum::Divide => {
-                // TODO: Naming is a real mess
-                // TODO: Should we always validate this way?
-                let op1_2 = op2op(&op1);
-                let a = a.clone();
-                match op1_2 {
-                    ExpressionPart::Operator(op1_3) => {
-                        b_base_constraint.range = 1..=9;
-                        b_base_constraint.accept = Rc::new(move |b| op1_3.operate(&a, &b).is_ok() );
-                    },
-                    _ => continue // Should never happen
-                }
+                b_base_constraint.range = 1..=9;
+                b_base_constraint.description = format!("{}..={} (from op1 {})", b_base_constraint.range.start(), b_base_constraint.range.end(), &op1);
             },
-            _ => { },
-        };
+            _ => {
+                b_base_constraint.range = range_for_digits_or_less(b_remaining_chars, false);
+                b_base_constraint.description = format!("{}..={} for {}-digit number", b_base_constraint.range.start(), b_base_constraint.range.end(), b_remaining_chars);
+            }
+        }
+
+        // Optimize b selection for one-operator case
+        if op2_str.is_empty() {
+            if let ExpressionPart::Operator(op1_obj) = op2op(&op1) {
+                let a_clone = a.clone();
+                let c_constraint_accept = constraint.c_constraint.accept.clone();
+                b_base_constraint.accept = Rc::new(move |b| {
+                    let c = op1_obj.operate(&a_clone, &b);
+                    match c {
+                        Err(_) => false,
+                        Ok(c) => c_constraint_accept(&c)
+                    }
+                });
+            }
+        }
         let b_constraint = &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint);
+        // println!("Finding value for b");
         let b = skip_fail!(find_num_with_constraint(&b_constraint), "Failed to generate b");
+        remaining_chars -= b.len();
 
         parts.push(ExpressionPart::Number(a));
         parts.push(op2op(&op1));
@@ -85,12 +106,18 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         match op2_opt {
             Some(op2) => {
                 parts.push(op2op(&op2));
+                let b2_remaining_chars = remaining_chars
+                    - 1 // op2
+                    - 2 // =c
+                ;
 
+                let range = range_for_digits_or_less(b2_remaining_chars, false);
                 let b2_base_constraint = ExpressionNumberConstraint {
-                    range: operand_range.clone(),
-                    description: format!("{}..={}", operand_range.start(), operand_range.end()),
+                    description: format!("{}..={} for {}-digit number", range.start(), range.end(), b_remaining_chars),
+                    range,
                     ..Default::default()
                 };
+                // println!("Finding value for b2");
                 let b2 = find_num_with_constraint(&ExpressionNumberConstraint::intersect(&b2_base_constraint, &constraint.b2_constraint))?;
                 parts.push(ExpressionPart::Number(b2));
             },
