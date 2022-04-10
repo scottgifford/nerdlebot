@@ -68,7 +68,8 @@ impl fmt::Display for ExpressionNumberConstraint
 
 pub fn find_num_with_constraint(constraint: &ExpressionNumberConstraint) -> Result<ExpressionNumber, NoMatchFound>
 {
-    for _try in 1..ATTEMPTS {
+    let constraint_range_size = (constraint.range.end() - constraint.range.start() + 1) as u32;
+    for _attempt in 0..min(constraint_range_size, ATTEMPTS) {
         let candidate = match range_rand_or_only(constraint.range.clone()) {
             Ok(num) => num,
             Err(err) => return Err(NoMatchFound { message: format!("Could not find possibility for constraint {}: {}", constraint, err)}),
@@ -78,8 +79,11 @@ pub fn find_num_with_constraint(constraint: &ExpressionNumberConstraint) -> Resu
             // println!("  Rejected {} with constraint {}", candidate, constraint);
             continue;
         }
+        // println!("Found num {} in {} tries for constraint {}", candidate, attempt, constraint);
+
         return Ok(candidate);
     }
+    // println!("Could not fund num in {} tries for constraint {}", ATTEMPTS, constraint);
     Err(NoMatchFound { message: format!("No match found for constraint {} after {} tries", constraint, ATTEMPTS)})
 }
 
