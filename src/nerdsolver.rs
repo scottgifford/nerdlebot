@@ -151,7 +151,7 @@ impl NerdleSolver {
                 None => { }
             }
         }
-        constraint.num_ops = min_ops..=min(max_ops, NERDLE_MAX_OPS);
+        constraint.num_ops = max(min_ops, 1)..=min(max_ops, NERDLE_MAX_OPS);
 
         match data.equal_pos {
             Some(pos) => {
