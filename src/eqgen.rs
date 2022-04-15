@@ -58,27 +58,16 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         remaining_chars -= 1; // op1
         // println!("Generated a {} from constraint: {}", a, &a_constraint);
 
-        let mut b_base_constraint = ExpressionNumberConstraint {
-            range: operand_range.clone(),
-            description: format!("{}..={} (from op1 {}, op2 {})", operand_range.start(), operand_range.end(), &op1, &op2_str),
-            ..Default::default()
-        };
-
         let b_remaining_chars = remaining_chars
             - if op2_opt.is_some() { 2 } else { 0 } // second op and b2 (if present)
             - 2 // =c
         ;
-        // Reduce number range for division
-        match op1 {
-            ExpressionOperatorEnum::Divide => {
-                b_base_constraint.range = 1..=9;
-                b_base_constraint.description = format!("{}..={} (from op1 {})", b_base_constraint.range.start(), b_base_constraint.range.end(), &op1);
-            },
-            _ => {
-                b_base_constraint.range = range_for_digits_or_less(b_remaining_chars, false);
-                b_base_constraint.description = format!("{}..={} for {}-digit number", b_base_constraint.range.start(), b_base_constraint.range.end(), b_remaining_chars);
-            }
-        }
+        let b_range = range_for_digits_or_less(b_remaining_chars, false);
+        let mut b_base_constraint = ExpressionNumberConstraint {
+            description: format!("{}..={} for {}-digit number", b_range.start(), b_range.end(), b_remaining_chars),
+            range: b_range,
+            ..Default::default()
+        };
 
         // Optimize b selection for one-operator case
         if op2_str.is_empty() {
@@ -97,6 +86,8 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         let b_constraint = &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint);
         // println!("Finding value for b");
         let b = skip_fail!(find_num_with_constraint(&b_constraint), "Failed to generate b");
+        // println!("Generated b {} from constraint: {}", b, &b_constraint);
+
         remaining_chars -= b.len();
 
         parts.push(ExpressionPart::Number(a));
