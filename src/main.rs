@@ -463,7 +463,7 @@ fn main() -> Result<(), CommandLineError> {
                 let guess;
                 let mut res;
                 loop {
-                    guess = match std::env::args().nth(2 + turn as usize) {
+                    guess = match std::env::args().nth(1 + turn as usize) {
                         Some(guess) => match Equation::from_str(&guess) {
                             Ok(guess) => guess,
                             Err(err) => return Err(CommandLineError { message: format!("Invalid guess equation in command-line arg {} '{}': {}", 2+turn, guess, err) } )
