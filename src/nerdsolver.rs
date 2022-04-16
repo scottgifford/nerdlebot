@@ -104,7 +104,20 @@ impl NerdleSolverData {
             }
 
             Ok(())
+
+    pub fn describe_counts(&self) -> String {
+        let mut description = "digit counts: ".to_string();
+
+        for(ch, info) in self.char_info.iter() {
+            description.push_str(&format!("{}[{}-{}], ", *ch as char, info.min_count, info.max_count));
         }
+
+        // Remove the extra comma and space we added above
+        description.pop();
+        description.pop();
+
+        description
+    }
 }
 
 pub struct NerdleSolver {
@@ -132,6 +145,7 @@ impl NerdleSolver {
                     }
                 })
             },
+            accept_description: self.data.borrow().describe_counts(),
             ..Default::default()
         };
 

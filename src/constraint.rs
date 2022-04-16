@@ -96,6 +96,7 @@ pub struct EquationConstraint
     pub c_constraint: ExpressionNumberConstraint,
     pub operator: HashMap<u8, RangeInclusive<u32>>,
     pub num_ops: RangeInclusive<u32>,
+    pub accept_description: String,
 }
 
 impl Default for EquationConstraint {
@@ -108,6 +109,7 @@ impl Default for EquationConstraint {
             c_constraint: ExpressionNumberConstraint::default(),
             operator: HashMap::new(),
             num_ops: 1..=NERDLE_MAX_OPS,
+            accept_description: "No further contraints".to_string(),
         })
     }
 }
@@ -175,7 +177,9 @@ impl fmt::Display for EquationConstraint {
         }
         write!(f, ")")?;
 
-        write!(f, ", a: {}, b: {}, b2: {}, c: {}", &self.a_constraint, &self.b_constraint, &self.b2_constraint, &self.c_constraint)
+        write!(f, ", a: {}, b: {}, b2: {}, c: {}", &self.a_constraint, &self.b_constraint, &self.b2_constraint, &self.c_constraint)?;
+
+        write!(f, ", {}", &self.accept_description)
     }
 }
 
