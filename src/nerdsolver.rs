@@ -84,16 +84,6 @@ impl NerdleSolverData {
             }
         }
 
-        // Below are all things that really should be checked by the constraint, and we are just double-checking.
-        // TODO: Verify that these never make it here, then remove/disable
-        if !eq.computes().unwrap_or(false) {
-            return Err(NerdleError { message: format!("Equation does not compute")});
-        }
-
-        if eq_str.len() != NERDLE_CHARACTERS as usize {
-            return Err(NerdleError { message: format!("Equation as string is too many characters ({} != {})", eq_str.len(), NERDLE_CHARACTERS)});
-        }
-
         // Check characters in positions
         for pos in 0..(NERDLE_CHARACTERS as usize) {
             let guess_ch = eq_bytes[pos];
