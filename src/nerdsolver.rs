@@ -62,48 +62,49 @@ impl Default for NerdleSolverData {
 }
 
 impl NerdleSolverData {
-        // TODO: Switch to a better error type
-        pub fn eq_matches(&self, eq: &Equation) -> Result<(), NerdleError> {
-            if !eq.computes().unwrap_or(false) {
-                return Err(NerdleError { message: format!("Equation does not compute")});
-            }
+    // TODO: Switch to a better error type
+    pub fn eq_matches(&self, eq: &Equation) -> Result<(), NerdleError> {
+        let eq_str = eq.to_string();
+        let eq_bytes = eq_str.as_bytes();
 
-            let eq_str = eq.to_string();
-            let eq_bytes = eq_str.as_bytes();
-            if eq_str.len() != NERDLE_CHARACTERS as usize {
-                return Err(NerdleError { message: format!("Equation as string is too many characters ({} != {})", eq_str.len(), NERDLE_CHARACTERS)});
-            }
+        // First check counts.  This is the unique thing that we do that contraints cannot.
+        let mut char_counts = HashMap::new();
+        for &ch in eq_bytes.iter() {
+            let counter = char_counts.entry(ch).or_insert(0);
+            *counter += 1;
+        }
 
-            // Check characters in positions
-            for pos in 0..(NERDLE_CHARACTERS as usize) {
-                let guess_ch = eq_bytes[pos];
-                match self.positions[pos].get(&guess_ch) {
-                    Some(false) => return Err(NerdleError { message: format!("Position {} cannot be {}", pos, guess_ch as char)}),
-                    _ => { }
-                }
+        for(ch, info) in self.char_info.iter() {
+            let count = char_counts.get(&ch).unwrap_or(&0);
+            if count < &info.min_count {
+                return Err(NerdleError { message: format!("Not enough of character '{}' ({} < {})", *ch as char, count, info.min_count) })
             }
+            if count > &info.max_count {
+                return Err(NerdleError { message: format!("Too many of character '{}' ({} > {})", *ch as char, count, info.max_count) })
+            }
+        }
 
-            // Now check counts
-            let mut char_counts = HashMap::new();
-            for &ch in eq_bytes.iter() {
-                let counter = char_counts.entry(ch).or_insert(0);
-                *counter += 1;
-            }
-            for (ch, count) in char_counts.iter() {
-                match self.char_info.get(ch) {
-                    Some(info) => {
-                        if count < &info.min_count {
-                            return Err(NerdleError { message: format!("Not enough of character '{}' ({} < {})", *ch as char, count, info.min_count) })
-                        }
-                        if count > &info.max_count {
-                            return Err(NerdleError { message: format!("Too many of character '{}' ({} > {})", *ch as char, count, info.max_count) })
-                        }
-                    },
-                    None => { }
-                }
-            }
+        // Below are all things that really should be checked by the constraint, and we are just double-checking.
+        // TODO: Verify that these never make it here, then remove/disable
+        if !eq.computes().unwrap_or(false) {
+            return Err(NerdleError { message: format!("Equation does not compute")});
+        }
 
-            Ok(())
+        if eq_str.len() != NERDLE_CHARACTERS as usize {
+            return Err(NerdleError { message: format!("Equation as string is too many characters ({} != {})", eq_str.len(), NERDLE_CHARACTERS)});
+        }
+
+        // Check characters in positions
+        for pos in 0..(NERDLE_CHARACTERS as usize) {
+            let guess_ch = eq_bytes[pos];
+            match self.positions[pos].get(&guess_ch) {
+                Some(false) => return Err(NerdleError { message: format!("Position {} cannot be {}", pos, guess_ch as char)}),
+                _ => { }
+            }
+        }
+
+        Ok(())
+    }
 
     pub fn describe_counts(&self) -> String {
         let mut description = "digit counts: ".to_string();
@@ -589,3 +590,15 @@ impl fmt::Display for NerdleSolver {
     }
 }
 
+#[cfg(test)]
+use std::str::FromStr;
+
+#[test]
+fn regression_test_1() {
+    let mut solver = NerdleSolver::new();
+    solver.update(&Equation::from_str("104-9=95").unwrap(), &NerdleResult::from_str("--Y--G-Y").unwrap());
+    solver.update(&Equation::from_str("385/5=77").unwrap(), &NerdleResult::from_str("--Y--GYY").unwrap());
+    let constraint = solver.constraint();
+    println!("Eq Constraint: {}", constraint);
+    assert!(solver.constraint().accept(&Equation::from_str("42+24=66").unwrap()).is_err());
+}
