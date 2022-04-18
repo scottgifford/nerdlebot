@@ -87,8 +87,13 @@ impl NerdleSolverData {
         // Check characters in positions
         for pos in 0..(NERDLE_CHARACTERS as usize) {
             let guess_ch = eq_bytes[pos];
-            match self.positions[pos].get(&guess_ch) {
-                Some(false) => return Err(NerdleError { message: format!("Position {} cannot be {}", pos, guess_ch as char)}),
+            match (guess_ch, self.positions[pos].get(&guess_ch)) {
+                (0..=9, Some(false)) => {
+                    return Err(NerdleError { message: format!("Position {} cannot be {}", pos, guess_ch as char)})
+                    // For numbers, this should have been caught by earlier checks.  Uncomment the below line to fail if not, for testing.
+                    // panic!("Position {} cannot be {} in {}", pos, guess_ch as char, &eq),
+                },
+                (_, Some(false)) => return Err(NerdleError { message: format!("Position {} cannot be {}", pos, guess_ch as char)}),
                 _ => { }
             }
         }
