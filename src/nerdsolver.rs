@@ -503,6 +503,9 @@ impl NerdleSolver {
         let mut regex = String::new();
         regex.push_str("(?-u)^");
         for pos in start..(start+digits) {
+            if min && pos != start {
+                regex.push_str("(?:|");
+            }
             regex.push_str("[");
             for byte in self.possibilities_for_pos(pos).iter() {
                 let chr = *byte as char;
@@ -512,8 +515,11 @@ impl NerdleSolver {
                 }
             }
             regex.push_str("]");
-            if min {
-                regex.push_str("?");
+        }
+
+        if min {
+            for _pos in (start+1)..(start+digits) {
+                regex.push_str(")");
             }
         }
         regex.push_str("$");
@@ -522,7 +528,6 @@ impl NerdleSolver {
         Regex::new(&regex).unwrap()
     }
 
-    // TODO: Lots of duplication from above
     fn regex_for_digits_anywhere(&self, digits: usize, min: bool) -> Regex {
         let data = self.data.borrow();
         let mut regex = String::new();
@@ -591,4 +596,20 @@ fn regression_test_1() {
     let constraint = solver.constraint();
     println!("Eq Constraint: {}", constraint);
     assert!(solver.constraint().accept(&Equation::from_str("42+24=66").unwrap()).is_err());
+}
+
+#[test]
+fn regex_for_digits_test_1() {
+    let mut solver = NerdleSolver::new();
+    solver.update(&Equation::from_str("62+28=90").unwrap(), &NerdleResult::from_str("YG-YYY--").unwrap());
+    let regex = solver.regex_for_digits_at(0, 4, true);
+    println!("Regex: {}", regex);
+    assert!(!regex.is_match("23"));
+    assert!(!regex.is_match("6"));
+    assert!(!regex.is_match("41"));
+
+    assert!(regex.is_match("3"));
+    assert!(regex.is_match("32"));
+    assert!(regex.is_match("321"));
+    assert!(regex.is_match("3217"));
 }
