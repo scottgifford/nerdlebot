@@ -117,12 +117,15 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
 
         let expr = Expression { parts };
         let res = skip_fail!(expr.calculate(), format!("Error calculating expression {}", expr));
+        // println!("Generating c from constraint: {}", &constraint.c_constraint);
         match constraint.c_constraint.accept(&res) {
             Err(_err) => {
                 // println!("c {} from expr {} did not match c_constraint {}: {}", &res, &expr, constraint.c_constraint, err);
                 continue;
             },
-            Ok(()) => { }
+            Ok(()) => {
+                // println!("Accepted c={}", &res);
+            }
         }
 
         let eq = Equation { expr, res };

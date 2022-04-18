@@ -489,7 +489,10 @@ impl NerdleSolver {
             &digits,
             &range.start(), &range.end(),
             &regex.as_str());
-        let accept = Rc::new(move |n: &ExpressionNumber| regex.is_match(&n.to_string()));
+        let accept = Rc::new(move |n: &ExpressionNumber| {
+            // println!("Checking {} against regex {}", &n, regex);
+            regex.is_match(&n.to_string())
+        });
         ExpressionNumberConstraint {
             range,
             description,
