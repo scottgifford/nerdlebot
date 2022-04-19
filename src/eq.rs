@@ -17,8 +17,8 @@ impl Equation {
         Ok(calc == self.res)
     }
 
-    pub fn len(&self) -> usize {
-        self.expr.len() + self.res.len() + 1
+    pub fn len(&self) -> Result<usize, InvalidEquationError> {
+        Ok(self.expr.len()? + self.res.len()? + 1)
     }
 }
 

@@ -54,7 +54,8 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         let a_constraint = &ExpressionNumberConstraint::intersect(&a_base_constraint, &constraint.a_constraint);
         // println!("Finding value for a");
         let a = skip_fail!(find_num_with_constraint(a_constraint), "Failed to generate a");
-        remaining_chars -= a.len();
+        let a_len = skip_fail!(a.len(), "a does not have valid length");
+        remaining_chars -= a_len;
         remaining_chars -= 1; // op1
         // println!("Generated a {} from constraint: {}", a, &a_constraint);
 
@@ -86,9 +87,10 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         let b_constraint = &ExpressionNumberConstraint::intersect(&b_base_constraint, &constraint.b_constraint);
         // println!("Finding value for b");
         let b = skip_fail!(find_num_with_constraint(&b_constraint), "Failed to generate b");
+        let b_len = skip_fail!(b.len(), "b does not have valid length");
         // println!("Generated b {} from constraint: {}", b, &b_constraint);
 
-        remaining_chars -= b.len();
+        remaining_chars -= b_len;
 
         parts.push(ExpressionPart::Number(a));
         parts.push(op2op(&op1));
@@ -129,9 +131,16 @@ pub fn eqgen_constrained(constraint: &EquationConstraint) -> Result<Equation, No
         }
 
         let eq = Equation { expr, res };
-        if eq.len() != NERDLE_CHARACTERS as usize {
-            // println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
-            continue;
+        match eq.len() {
+            Ok(len) => if len != NERDLE_CHARACTERS as usize {
+                // println!("Equation '{}' is wrong length ({} chars != {})", eq, eq.len(), NERDLE_CHARACTERS);
+                continue;
+            },
+            Err(_err) => {
+                // println!("Equation '{}' does not have valid length: {}", eq, err);
+                continue;
+
+            }
         }
         if !eq.computes().unwrap_or(false) {
             println!("Equation unexpectedly did not compute: {}", eq);

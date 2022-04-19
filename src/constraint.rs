@@ -39,12 +39,17 @@ impl ExpressionNumberConstraint {
     }
 
     pub fn accept(&self, num: &ExpressionNumber) -> Result<(), NoMatchFound> {
-        if !self.range.contains(&num.value) {
-            Err(NoMatchFound { message: format!("Value {} is not in range: {}", num, self)})
-        } else if !(self.accept)(&num) {
-            Err(NoMatchFound { message: format!("Value {} did not match accept function: {}", num, self)})
-        } else {
-            Ok(())
+        match num.int_value() {
+            Ok(value) => {
+                if !self.range.contains(&value) {
+                    Err(NoMatchFound { message: format!("Value {} is not in range: {}", num, self)})
+                } else if !(self.accept)(&num) {
+                    Err(NoMatchFound { message: format!("Value {} did not match accept function: {}", num, self)})
+                } else {
+                    Ok(())
+                }
+            },
+            Err(err) => Err(NoMatchFound { message: format!("Value {} was not an integer: {}", num, err)})
         }
     }
 }

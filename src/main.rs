@@ -42,8 +42,13 @@ impl fmt::Debug for CommandLineError {
     }
 }
 
-fn prettylen(len: usize) -> String {
-    format!("{} ({})", "-".repeat(len), len)
+fn prettylen<E>(len: Result<usize, E>) -> String
+    where E: fmt::Display
+{
+    match len {
+        Ok(len) => format!("{} ({})", "-".repeat(len), len),
+        Err(err) => format!("Invalid length: {}", err)
+    }
 }
 
 
@@ -303,8 +308,11 @@ fn main() -> Result<(), CommandLineError> {
                 let answer = Equation::from_str(&answer)
                     .expect("Failed to parse equation");
 
-                if answer.len() != NERDLE_CHARACTERS as usize {
-                    return Err(CommandLineError { message: format!("Equation '{}' is wrong length ({} chars != {})", answer, answer.len(), NERDLE_CHARACTERS) } );
+                match answer.len() {
+                    Ok(len) => if len != NERDLE_CHARACTERS as usize {
+                        return Err(CommandLineError { message: format!("Equation '{}' is wrong length ({} chars != {})", answer, len, NERDLE_CHARACTERS) } );
+                    },
+                    Err(err) => return Err(CommandLineError { message: format!("Equation '{}' has invalid length: {})", answer, err) } )
                 }
                 if !answer.computes().unwrap_or(false) {
                     return Err(CommandLineError { message: format!("Equation unexpectedly did not compute: {}", answer) } );
@@ -392,8 +400,11 @@ fn main() -> Result<(), CommandLineError> {
                 let answer = Equation::from_str(&line)
                     .expect("Failed to parse equation");
 
-                if answer.len() != NERDLE_CHARACTERS as usize {
-                    return Err(CommandLineError { message: format!("Equation '{}' is wrong length ({} chars != {})", answer, answer.len(), NERDLE_CHARACTERS) } );
+                match answer.len() {
+                    Ok(len) => if len != NERDLE_CHARACTERS as usize {
+                        return Err(CommandLineError { message: format!("Equation '{}' is wrong length ({} chars != {})", answer, len, NERDLE_CHARACTERS) } );
+                    },
+                    Err(err) => return Err(CommandLineError { message: format!("Equation '{}' had invalid length: {}", answer, err)})
                 }
                 if !answer.computes().unwrap_or(false) {
                     return Err(CommandLineError { message: format!("Equation unexpectedly did not compute: {}", answer) } );

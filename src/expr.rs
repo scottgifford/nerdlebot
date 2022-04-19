@@ -117,8 +117,13 @@ impl Expression {
         Ok(())
     }
 
-    pub fn len(&self) -> usize {
-        self.parts.iter().fold(0, |sum, part| sum + ExpressionPart::len(&part))
+    pub fn len(&self) -> Result<usize, InvalidExpressionError> {
+        self.parts.iter().fold(Ok(0), |sum, part| -> Result<usize, InvalidExpressionError> {
+            match sum {
+                Ok(sum) => Ok(sum + ExpressionPart::len(&part)?),
+                Err(err) => Err(err)
+            }
+        })
     }
 }
 
@@ -154,7 +159,7 @@ impl fmt::Display for ExpressionPart {
 }
 
 impl ExpressionPart {
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> Result<usize, InvalidExpressionError> {
         match self {
             ExpressionPart::Number(num) => num.len(),
             ExpressionPart::Operator(op) => op.len(),
@@ -175,19 +180,67 @@ impl ExpressionPart {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExpressionNumber {
-    pub value: i32,
+     numerator: i32,
+     denominator: i32,
 }
 
 impl fmt::Display for ExpressionNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
+        if self.is_int() {
+            write!(f, "{}", self.numerator)
+        } else {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        }
+    }
+}
+
+impl Default for ExpressionNumber {
+    fn default() -> Self {
+        Self {
+            numerator: 0,
+            denominator: 1,
+        }
     }
 }
 
 impl ExpressionNumber {
-    pub fn len(&self) -> usize {
-        num_digits(self.value) as usize
+    pub fn new(value: i32) -> ExpressionNumber {
+        ExpressionNumber {
+            numerator: value,
+            ..Default::default()
+        }
     }
+
+    pub fn len(&self) -> Result<usize, InvalidExpressionError> {
+        if self.is_int() {
+            Ok(num_digits(self.numerator) as usize)
+        } else {
+            Err(InvalidExpressionError { message: format!("Cannot get length of non-integer value {}/{}", self.numerator, self.denominator) })
+        }
+    }
+
+    // TODO: Not really a great error type
+    pub fn int_value(&self) -> Result<i32, InvalidExpressionError> {
+        if self.is_int() {
+            Ok(self.numerator)
+        } else {
+            Err(InvalidExpressionError { message: format!("Cannot get integer value of {}/{}", self.numerator, self.denominator) })
+        }
+    }
+
+    pub fn is_int(&self) -> bool {
+        self.denominator == 1
+    }
+
+    pub fn simplify(self) -> ExpressionNumber {
+        if (self.numerator % self.denominator) == 0 {
+            ExpressionNumber::new(self.numerator / self.denominator)
+        } else {
+            // Cannot be simplified to int, just leave as-is.
+            self
+        }
+    }
+
 }
 
 // TODO: This should be merged into ExpressionOperator, possibly replace it
@@ -245,8 +298,8 @@ impl fmt::Display for ExpressionOperatorEnum {
 pub trait ExpressionOperator: ExpressionOperatorClone + fmt::Debug {
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError>;
 
-    fn len(&self) -> usize {
-        1
+    fn len(&self) -> Result<usize, InvalidExpressionError> {
+        Ok(1)
     }
 
     fn precedence(&self) -> u8;
@@ -301,10 +354,13 @@ impl ExpressionOperator for ExpressionOperatorPlus {
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
-        let value = a.value.checked_add(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} + {}", a, b)} )?;
-        Ok(ExpressionNumber {
-            value,
-        })
+        match (a.int_value(), b.int_value()) {
+            (Ok(a_value), Ok(b_value)) => {
+                let value = a_value.checked_add(b_value).ok_or(InvalidExpressionError { message: format!("Could not compute {} + {}", a, b)} )?;
+                Ok(ExpressionNumber::new(value))
+            }
+            (_, _) => Err(InvalidExpressionError { message: format!("Could not add {} + {}: one or both values are not integers", a, b)})
+        }
     }
 }
 
@@ -323,10 +379,13 @@ impl ExpressionOperator for ExpressionOperatorMinus {
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
-        let value = a.value.checked_sub(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} - {}", a, b)} )?;
-        Ok(ExpressionNumber {
-            value,
-        })
+        match (a.int_value(), b.int_value()) {
+            (Ok(a_value), Ok(b_value)) => {
+                let value = a_value.checked_sub(b_value).ok_or(InvalidExpressionError { message: format!("Could not compute {} - {}", a, b)} )?;
+                Ok(ExpressionNumber::new(value))
+            }
+            (_, _) => Err(InvalidExpressionError { message: format!("Could not add {} + {}: one or both values are not integers", a, b)})
+        }
     }
 }
 
@@ -344,10 +403,12 @@ impl ExpressionOperator for ExpressionOperatorTimes {
     }
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
-        let value = a.value.checked_mul(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} * {}", a, b)} )?;
+        let numerator = a.numerator.checked_mul(b.numerator).ok_or(InvalidExpressionError { message: format!("Could not compute numerator for {} * {}", a, b)} )?;
+        let denominator = a.denominator.checked_mul(b.denominator).ok_or(InvalidExpressionError { message: format!("Could not compute numerator for {} * {}", a, b)} )?;
         Ok(ExpressionNumber {
-            value,
-        })
+            numerator,
+            denominator,
+        }.simplify())
     }
 }
 
@@ -367,14 +428,13 @@ impl ExpressionOperator for ExpressionOperatorDivide {
 
 
     fn operate(&self, a: &ExpressionNumber, b: &ExpressionNumber) -> Result<ExpressionNumber, InvalidExpressionError> {
-        let rem = a.value.checked_rem(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} / {}", a, b)} )?;
-        if rem != 0 {
-            return Err(InvalidExpressionError { message: format!("Found remainder in {} / {}", a, b)})
-        }
-        let value = a.value.checked_div(b.value).ok_or(InvalidExpressionError { message: format!("Could not compute {} / {}", a, b)} )?;
+        // flip numerator and denominator of b
+        let numerator = a.numerator.checked_mul(b.denominator).ok_or(InvalidExpressionError { message: format!("Could not compute numerator for {} * {}", a, b)} )?;
+        let denominator = a.denominator.checked_mul(b.numerator).ok_or(InvalidExpressionError { message: format!("Could not compute numerator for {} * {}", a, b)} )?;
         Ok(ExpressionNumber {
-            value,
-        })
+            numerator,
+            denominator,
+        }.simplify())
     }
 }
 
@@ -397,9 +457,7 @@ impl FromStr for Expression {
                 },
                 _ => {
                     if in_num {
-                        parts.push(ExpressionPart::Number(ExpressionNumber {
-                            value: accum,
-                        }));
+                        parts.push(ExpressionPart::Number(ExpressionNumber::new(accum)));
                     }
                     accum = 0;
                     in_num = false;
@@ -419,11 +477,193 @@ impl FromStr for Expression {
 
 
 pub fn mknum(x:i32) -> ExpressionNumber {
-    ExpressionNumber {
-        value: x
-    }
+    ExpressionNumber::new(x)
 }
 
 // pub fn mknump(x:i32) -> ExpressionPart {
 //     ExpressionPart::Number(mknum(x))
 // }
+#[cfg(test)]
+#[test]
+fn simple_int_test() {
+    {
+        let a = ExpressionNumber::new(10);
+        assert!(a.is_int());
+        assert_eq!(a.int_value().unwrap(), 10);
+        assert_eq!(a.len().unwrap(), 2);
+    }
+    {
+        let a = ExpressionNumber::new(1);
+        assert!(a.is_int());
+        assert_eq!(a.int_value().unwrap(), 1);
+        assert_eq!(a.len().unwrap(), 1);
+    }
+
+    {
+        let a = ExpressionNumber::new(0);
+        assert!(a.is_int());
+        assert_eq!(a.int_value().unwrap(), 0);
+        assert_eq!(a.len().unwrap(), 1);
+    }
+
+    {
+        let a = ExpressionNumber::new(-1);
+        assert!(a.is_int());
+        assert_eq!(a.int_value().unwrap(), -1);
+        assert_eq!(a.len().unwrap(), 2);
+    }
+
+    {
+        let a = ExpressionNumber::new(-10);
+        assert!(a.is_int());
+        assert_eq!(a.int_value().unwrap(), -10);
+        assert_eq!(a.len().unwrap(), 3);
+    }
+}
+
+#[test]
+fn simple_frac_test() {
+    {
+        let a = ExpressionNumber {
+            numerator: 1,
+            denominator: 2,
+        };
+        assert!(!a.is_int());
+        assert!(a.int_value().is_err());
+        assert!(a.len().is_err());
+    }
+}
+
+#[test]
+fn simplify_test() {
+    {
+        let a = ExpressionNumber {
+            numerator: 144,
+            denominator: 12,
+        };
+        assert!(!a.is_int());
+        assert!(a.int_value().is_err());
+        assert!(a.len().is_err());
+
+        let s = a.simplify();
+        assert!(s.is_int());
+        assert_eq!(s.int_value().unwrap(), 12);
+        assert_eq!(s.len().unwrap(), 2);
+    }
+}
+
+#[test]
+fn add_int_test() {
+    let plus = ExpressionOperatorPlus { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber::new(2);
+        let c = plus.operate(&a, &b).unwrap();
+        assert_eq!(c.int_value().unwrap(), 12);
+    }
+}
+
+#[test]
+fn add_frac_test() {
+    let plus = ExpressionOperatorPlus { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber {
+            numerator: 1,
+            denominator: 2,
+        };
+        assert!(plus.operate(&a, &b).is_err());
+    }
+}
+
+#[test]
+fn sub_int_test() {
+    let minus = ExpressionOperatorMinus { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber::new(2);
+        let c = minus.operate(&a, &b).unwrap();
+        assert_eq!(c.int_value().unwrap(), 8);
+    }
+}
+
+#[test]
+fn sub_frac_test() {
+    let minus = ExpressionOperatorMinus { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber {
+            numerator: 1,
+            denominator: 2,
+        };
+        assert!(minus.operate(&a, &b).is_err());
+    }
+}
+
+#[test]
+fn mul_int_test() {
+    let times = ExpressionOperatorTimes { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber::new(2);
+        let c = times.operate(&a, &b).unwrap();
+        assert_eq!(c.int_value().unwrap(), 20);
+    }
+}
+
+#[test]
+fn mul_frac_test() {
+    let times = ExpressionOperatorTimes { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber {
+            numerator: 1,
+            denominator: 2,
+        };
+        let c = times.operate(&a, &b).unwrap();
+        assert_eq!(c.int_value().unwrap(), 5);
+    }
+}
+
+
+#[test]
+fn div_int_test() {
+    let divide = ExpressionOperatorDivide { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber::new(2);
+        let c = divide.operate(&a, &b).unwrap();
+        assert_eq!(c.int_value().unwrap(), 5);
+    }
+}
+
+#[test]
+fn div_frac_test() {
+    let divide = ExpressionOperatorDivide { };
+    {
+        let a = ExpressionNumber::new(10);
+        let b = ExpressionNumber {
+            numerator: 1,
+            denominator: 2,
+        };
+        let c = divide.operate(&a, &b).unwrap();
+        assert_eq!(c.int_value().unwrap(), 20);
+    }
+
+    {
+        let a = ExpressionNumber::new(1);
+        let b = ExpressionNumber::new(2);
+        let c = divide.operate(&a, &b).unwrap();
+        assert_eq!(c.numerator, 1);
+        assert_eq!(c.denominator, 2);
+        assert!(!c.is_int());
+        assert!(c.int_value().is_err());
+
+        let d = divide.operate(&c, &ExpressionNumber {
+            numerator: 1,
+            denominator: 4,
+        }).unwrap();
+        assert!(d.is_int());
+        assert_eq!(d.int_value().unwrap(), 2);
+    }
+}
