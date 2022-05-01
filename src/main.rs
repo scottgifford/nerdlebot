@@ -14,6 +14,7 @@ mod eqgen;
 mod constraint;
 mod nerdle;
 mod nerdsolver;
+mod nerdledata;
 mod util;
 
 use crate::eq::Equation;
