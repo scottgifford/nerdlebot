@@ -24,31 +24,35 @@ impl StrategyEnum {
             _ => Err(NoSuchStrategyError { message: format!("No strategy named '{}'", name)})
         }
     }
+
+    pub fn as_strategy(&self) -> &dyn Strategy {
+        match self {
+            StrategyEnum::FirstPossible(solver) => solver,
+        }
+    }
+
+    pub fn as_strategy_mut(&mut self) -> &mut dyn Strategy {
+        match self {
+            StrategyEnum::FirstPossible(solver) => solver,
+        }
+    }
 }
 
 impl Strategy for StrategyEnum {
     fn take_guess(&self) -> Result<Equation, NoMatchFound> {
-        match self {
-            StrategyEnum::FirstPossible(solver) => solver.take_guess(),
-        }
+        self.as_strategy().take_guess()
     }
 
     fn update(&mut self, guess: &Equation, result: &NerdleResult) {
-        match self {
-            StrategyEnum::FirstPossible(solver) => solver.update(guess, result),
-        }
+        self.as_strategy_mut().update(guess, result)
     }
 
     fn print_hint(&self) {
-        match self {
-            StrategyEnum::FirstPossible(solver) => solver.print_hint(),
-        }
+        self.as_strategy().print_hint()
     }
 
     fn answer_ok(&self, guess: &Equation) -> Result<(), NerdleError> {
-        match self {
-            StrategyEnum::FirstPossible(solver) => solver.answer_ok(guess),
-        }
+        self.as_strategy().answer_ok(guess)
     }
 }
 
