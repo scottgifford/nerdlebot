@@ -13,6 +13,7 @@ mod expr;
 mod eqgen;
 mod constraint;
 mod nerdle;
+mod strategy;
 mod nerdsolver;
 mod nerdledata;
 mod util;
@@ -20,7 +21,7 @@ mod util;
 use crate::eq::Equation;
 use crate::expr::Expression;
 use crate::eqgen::eqgen;
-use crate::nerdsolver::NerdleSolver;
+use crate::strategy::{Strategy, StrategyEnum};
 use crate::nerdle::{NerdleResult, NERDLE_CHARACTERS};
 
 #[derive(Clone)]
@@ -186,7 +187,8 @@ fn main() -> Result<(), CommandLineError> {
 
         // TODO: Lots of copypasta from "play"
         Some("play_assist") => {
-            let mut solver = NerdleSolver::new();
+            let mut solver = StrategyEnum::by_name("first_possible")
+                .expect("Failed to find named strategy");
             let answer = eqgen()
                 .expect("Failed to generate equation");
             let mut won = false;
@@ -205,7 +207,7 @@ fn main() -> Result<(), CommandLineError> {
                     let cleanput = input.trim_end();
                     println!("Read: {}", cleanput);
                     guess = skip_fail!(Equation::from_str(&cleanput), "Invalid equation, try again");
-                    match solver.eq_matches(&guess) {
+                    match solver.answer_ok(&guess) {
                         Ok(()) => { },
                         Err(why) => println!("Equation is impossible because {}", why)
                     }
@@ -242,7 +244,8 @@ fn main() -> Result<(), CommandLineError> {
                 let start_time = Instant::now();
 
                 let result = panic::catch_unwind(|| {
-                    let mut solver = NerdleSolver::new();
+                    let mut solver = StrategyEnum::by_name("first_possible")
+                        .expect("Failed to find named strategy");
                     let answer = eqgen().expect("Failed to generate equation");
                     println!("Answer: {}", &answer);
 
@@ -258,7 +261,7 @@ fn main() -> Result<(), CommandLineError> {
                         loop {
                             guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
                             println!("Turn {}  Guess: {}", turn, guess);
-                            match solver.eq_matches(&guess) {
+                            match solver.answer_ok(&guess) {
                                 Ok(()) => { },
                                 Err(why) => println!("Equation is impossible because {}", why)
                             }
@@ -319,7 +322,9 @@ fn main() -> Result<(), CommandLineError> {
                     return Err(CommandLineError { message: format!("Equation unexpectedly did not compute: {}", answer) } );
                 }
         
-                let mut solver = NerdleSolver::new();
+                let mut solver = StrategyEnum::by_name("first_possible")
+                    .expect("Failed to find named strategy");
+
                 println!("Answer: {}", &answer);
 
                 let mut won = false;
@@ -327,9 +332,8 @@ fn main() -> Result<(), CommandLineError> {
                     let mut guess;
                     let res;
                     loop {
-                        let constraint = solver.constraint();
-                        match constraint.accept(&answer) {
-                            Err(err) =>  return Err(CommandLineError { message: format!("Solver constraint {} rejects answer: {}", constraint, err) } ),
+                        match solver.answer_ok(&answer) {
+                            Err(err) =>  return Err(CommandLineError { message: format!("Solver {} rejects answer: {}", solver, err) } ),
                             Ok(()) => { }
                         }
                         guess = match std::env::args().nth(2 + turn as usize) {
@@ -340,7 +344,7 @@ fn main() -> Result<(), CommandLineError> {
                             None => skip_fail!(solver.take_guess(), "No valid guess was generating, trying again")
                         };
                         println!("Turn {}  Guess: {}", turn, guess);
-                        match solver.eq_matches(&guess) {
+                        match solver.answer_ok(&guess) {
                             Ok(()) => { },
                             Err(why) => println!("Equation is impossible because {}", why)
                         }
@@ -397,7 +401,8 @@ fn main() -> Result<(), CommandLineError> {
                 println!("=== Playing game {}", i);
                 let start_time = Instant::now();
 
-                let mut solver = NerdleSolver::new();
+                let mut solver = StrategyEnum::by_name("first_possible")
+                    .expect("Failed to find named strategy");
                 let answer = Equation::from_str(&line)
                     .expect("Failed to parse equation");
 
@@ -418,14 +423,13 @@ fn main() -> Result<(), CommandLineError> {
                     let mut guess;
                     let res;
                     loop {
-                        let constraint = solver.constraint();
-                        match constraint.accept(&answer) {
-                            Err(err) =>  return Err(CommandLineError { message: format!("Solver constraint {} rejects answer: {}", constraint, err) } ),
+                        match solver.answer_ok(&answer) {
+                            Err(err) =>  return Err(CommandLineError { message: format!("Solver {} rejects answer: {}", solver, err) } ),
                             Ok(()) => { }
                         }
                         guess = skip_fail!(solver.take_guess(), "No valid guess was generating, trying again");
                         println!("Turn {}  Guess: {}", turn, guess);
-                        match solver.eq_matches(&guess) {
+                        match solver.answer_ok(&guess) {
                             Ok(()) => { },
                             Err(why) => println!("Equation is impossible because {}", why)
                         }
@@ -467,7 +471,9 @@ fn main() -> Result<(), CommandLineError> {
 
         // TODO: Lots of duplicated code
         Some("interactive") => {        
-            let mut solver = NerdleSolver::new();
+            let mut solver = StrategyEnum::by_name("first_possible")
+                .expect("Failed to find named strategy");
+
 
             let mut won = false;
             for turn in 1..=nerdle::NERDLE_TURNS {
@@ -483,7 +489,7 @@ fn main() -> Result<(), CommandLineError> {
                         None => skip_fail!(solver.take_guess(), "No valid guess was generating, trying again")
                     };
                     println!("Turn {}  Guess: {}", turn, &guess);
-                    match solver.eq_matches(&guess) {
+                    match solver.answer_ok(&guess) {
                         Ok(()) => { },
                         Err(why) => println!("Equation is impossible because {}", why)
                     }

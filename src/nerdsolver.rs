@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::cmp::{min, max};
 use regex::Regex;
 
+use crate::strategy::Strategy;
 use crate::eq::Equation;
 use crate::nerdle::{NerdleResult, NerdleError, NERDLE_CHARACTERS, NERDLE_VALID_CHAR_BYTES, NERDLE_OPERAND_MAX_DIGITS, NERDLE_MAX_OPS};
 use crate::eqgen::{eqgen_constrained};
@@ -16,6 +17,85 @@ const OPERATOR_STR: &str = "-+*/";
 
 pub struct NerdleSolver {
     data: Rc<RefCell<NerdleData>>,
+}
+
+impl Strategy for NerdleSolver {
+    fn take_guess(&self) -> Result<Equation, NoMatchFound> {
+        let constraint = self.constraint();
+        println!("Constraint: {}", &constraint);
+
+        let mut r = eqgen_constrained(&constraint);
+        for _ in 0..100 {
+            if r.is_ok() {
+                return r;
+            }
+            r = eqgen_constrained(&constraint);
+        }
+        r
+    }
+
+    fn update(&mut self, guess: &Equation, result: &NerdleResult) {
+        let mut data = self.data.borrow_mut();
+        data.update(guess, result);
+    }
+
+    fn print_hint(&self) {
+        let data = self.data.borrow();
+
+        print!("Equal sign ");
+        match data.equal_pos {
+            Some(x) => print!("at {}", x),
+            None => {
+                print!("not at ");
+                match data.char_info.get(&('=' as u8)) {
+                    Some(x) => {
+                        for pos in 0..(NERDLE_CHARACTERS as usize) {
+                            match x.positions[pos] {
+                                NerdleIsChar::DefinitelyNot => print!("{} ", pos),
+                                _ => { }
+                            }
+                        }
+                    },
+                    None => { }
+                }
+            }
+        }
+        println!("");
+
+        let mut known_pos: HashMap<u8, u32> = HashMap::new();
+        for (key, val) in data.char_info.iter() {
+            known_pos.insert(*key, val.positions.iter().fold(0, |sum, status| sum + match status {
+                NerdleIsChar::Definitely => 1,
+                _ => 0
+            }));
+        }
+
+        for pos in 0..(NERDLE_CHARACTERS as usize) {
+            print!("Position {} ", pos);
+            let poss = self.possibilities_for_pos(pos);
+            match poss.len() {
+                0 => print!("NO POSSIBILITIES?!"),
+                1 => print!("is"),
+                _ => print!("could be")
+            }
+            let mut sorted: Vec<&u8> = poss.iter().collect::<Vec<_>>();
+            sorted.sort();
+            for p in sorted.iter() {
+                print!(" {}", **p as char);
+            }
+            print!("\n");
+        }
+    }
+
+    fn answer_ok(&self, eq: &Equation) -> Result<(), NerdleError> {
+        self.data.borrow().eq_matches(eq)?;
+        match self.constraint().accept(eq) {
+            Err(err) => return Err(NerdleError { message: format!("Constraint {} failed: {}", self.constraint(), err)}),
+            Ok(()) => { }
+        }
+
+        Ok(())
+    }
 }
 
 impl NerdleSolver {
@@ -160,78 +240,6 @@ impl NerdleSolver {
         }
 
         constraint
-    }
-
-    pub fn take_guess(&self) -> Result<Equation, NoMatchFound> {
-        let constraint = self.constraint();
-        println!("Constraint: {}", &constraint);
-
-        let mut r = eqgen_constrained(&constraint);
-        for _ in 0..100 {
-            if r.is_ok() {
-                return r;
-            }
-            r = eqgen_constrained(&constraint);
-        }
-        r
-    }
-
-    // TODO: Switch to a better error type
-    pub fn eq_matches(&self, eq: &Equation) -> Result<(), NerdleError> {
-        self.data.borrow().eq_matches(eq)
-    }
-
-    pub fn update(&mut self, guess: &Equation, result: &NerdleResult) {
-        let mut data = self.data.borrow_mut();
-        data.update(guess, result);
-    }
-
-    pub fn print_hint(&self) {
-        let data = self.data.borrow();
-
-        print!("Equal sign ");
-        match data.equal_pos {
-            Some(x) => print!("at {}", x),
-            None => {
-                print!("not at ");
-                match data.char_info.get(&('=' as u8)) {
-                    Some(x) => {
-                        for pos in 0..(NERDLE_CHARACTERS as usize) {
-                            match x.positions[pos] {
-                                NerdleIsChar::DefinitelyNot => print!("{} ", pos),
-                                _ => { }
-                            }
-                        }
-                    },
-                    None => { }
-                }
-            }
-        }
-        println!("");
-
-        let mut known_pos: HashMap<u8, u32> = HashMap::new();
-        for (key, val) in data.char_info.iter() {
-            known_pos.insert(*key, val.positions.iter().fold(0, |sum, status| sum + match status {
-                NerdleIsChar::Definitely => 1,
-                _ => 0
-            }));
-        }
-
-        for pos in 0..(NERDLE_CHARACTERS as usize) {
-            print!("Position {} ", pos);
-            let poss = self.possibilities_for_pos(pos);
-            match poss.len() {
-                0 => print!("NO POSSIBILITIES?!"),
-                1 => print!("is"),
-                _ => print!("could be")
-            }
-            let mut sorted: Vec<&u8> = poss.iter().collect::<Vec<_>>();
-            sorted.sort();
-            for p in sorted.iter() {
-                print!(" {}", **p as char);
-            }
-            print!("\n");
-        }
     }
 
     fn is_op_char(ch: char) -> bool {
