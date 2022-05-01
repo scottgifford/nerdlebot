@@ -30,6 +30,9 @@ pub const NERDLE_A_MAX: i32 = 999; // TODO: Might even be 9999
 // pub const NERDLE_C_OTHER_MIN: i32= 1;
 // pub const NERDLE_A_MAX: i32 = 999;
 
+pub const NERDLE_VALID_CHAR_STR: &str = "1234567890-+*/=";
+pub const NERDLE_VALID_CHAR_BYTES: &[u8] = NERDLE_VALID_CHAR_STR.as_bytes();
+
 pub fn nerdle_str(guess: &str, answer: &str) -> Result<NerdleResult, NerdleError> {
     let mut result = NerdleResult::default();
 

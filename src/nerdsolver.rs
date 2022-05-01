@@ -6,13 +6,12 @@ use std::cmp::{min, max};
 use regex::Regex;
 
 use crate::eq::Equation;
-use crate::nerdle::{NerdleResult, NerdlePositionResult, NerdleError, NERDLE_CHARACTERS, NERDLE_OPERAND_MAX_DIGITS, NERDLE_MAX_OPS};
+use crate::nerdle::{NerdleResult, NerdleError, NERDLE_CHARACTERS, NERDLE_VALID_CHAR_BYTES, NERDLE_OPERAND_MAX_DIGITS, NERDLE_MAX_OPS};
 use crate::eqgen::{eqgen_constrained};
 use crate::constraint::{EquationConstraint, ExpressionNumberConstraint, NoMatchFound, range_for_digits, range_for_digits_or_less};
 use crate::expr::{ExpressionNumber};
 use crate::nerdledata::{NerdleData, NerdleCharInfo, NerdleIsChar};
 
-const VALID_CHAR_STR: &str = "1234567890-+*/=";
 const OPERATOR_STR: &str = "-+*/";
 
 pub struct NerdleSolver {
@@ -76,7 +75,7 @@ impl NerdleSolver {
         };
 
         let is_op_at = |pos: usize| -> bool {
-            NerdleSolver::possibilities_for_pos_data(&data, pos)
+            data.possibilities_for_pos(pos)
                 .iter()
                 .all(|ch| NerdleSolver::is_op_char(*ch as char))
         };
@@ -184,80 +183,7 @@ impl NerdleSolver {
 
     pub fn update(&mut self, guess: &Equation, result: &NerdleResult) {
         let mut data = self.data.borrow_mut();
-
-        // let mut state = ParseState::InA;
-        let guess_str = guess.to_string();
-        let guess = guess_str.as_bytes();
-
-        // First count the total letters (it is hard to take GREENs into account as we go)
-        let mut char_occ_count: HashMap<u8, u32> = HashMap::new();
-        let mut found_max: HashMap<u8, bool> = HashMap::new();
-
-        for i in 0..NERDLE_CHARACTERS as usize {
-            let guess_ch = guess[i];
-            let counter = char_occ_count.entry(guess_ch).or_insert(0);
-            let new_char_pos_info: NerdleIsChar;
-            // First handle general-purpose logic
-            match result.positions[i] {
-                NerdlePositionResult::Green => {
-                    data.positions[i].insert(guess_ch, true);
-                    for ch in VALID_CHAR_STR.as_bytes().iter() {
-                        if *ch != guess_ch {
-                            data.positions[i].insert(*ch, false);
-                        }
-                    }
-                    new_char_pos_info = NerdleIsChar::Definitely;
-                    *counter += 1
-                },
-                NerdlePositionResult::Yellow => {
-                    data.positions[i].insert(guess_ch, false);
-                    new_char_pos_info = NerdleIsChar::DefinitelyNot;
-                    *counter += 1;
-                },
-                NerdlePositionResult::Gray => {
-                    data.positions[i].insert(guess_ch, false);
-                    new_char_pos_info = NerdleIsChar::DefinitelyNot;
-                    found_max.insert(guess_ch, true);
-                }
-            }
-
-            let char_info = data.char_info.entry(guess_ch).or_insert(NerdleCharInfo::new());
-            (*char_info).positions[i] = new_char_pos_info;
-
-            // Special handling for equal sign and operators
-            match guess_ch as char {
-                '=' => match result.positions[i] {
-                    NerdlePositionResult::Green => {
-                        data.equal_pos = Some(i);
-                    },
-                    _ => { }
-                },
-                _ => { }
-            }
-        }
-
-        for (ch, count) in char_occ_count.iter() {
-            let mut ent = data.char_info.entry(*ch).or_insert(NerdleCharInfo::new());
-            (*ent).min_count = max((*ent).min_count, *count);
-            if found_max.contains_key(ch) {
-                (*ent).max_count = *count;
-            }
-        }
-
-        // If we have eliminated all other possibilities, explicitly set remaining item to find, to simplify logic later
-        for pos in 0..(NERDLE_CHARACTERS as usize) {
-            let poss = NerdleSolver::possibilities_for_pos_data(&data, pos);
-            if poss.len() == 1 {
-                let ch = poss.iter().next().unwrap();
-
-                let mut char_info = data.char_info.entry(*ch).or_insert(NerdleCharInfo::new());
-                (*char_info).min_count = max((*char_info).min_count, 1);
-                (*char_info).positions[pos] = NerdleIsChar::Definitely;
-
-                let pos_data = &mut data.positions[pos];
-                pos_data.insert(*ch, true);
-            }
-        }
+        data.update(guess, result);
     }
 
     pub fn print_hint(&self) {
@@ -315,50 +241,8 @@ impl NerdleSolver {
         }
     }
 
-    fn possibilities_for_pos_data(data: &NerdleData, pos: usize) -> HashSet<u8> {
-        // TODO: Move to state or something?  Or maybe this should be done up update() to pre-calculate all this?
-        let mut known_pos: HashMap<u8, u32> = HashMap::new();
-        for (key, val) in data.char_info.iter() {
-            known_pos.insert(*key, val.positions.iter().fold(0, |sum, status| sum + match status {
-                NerdleIsChar::Definitely => 1,
-                _ => 0
-            }));
-        }
-
-        let mut ret = HashSet::new();
-        match data.positions[pos].iter().find_map(|(key, value)| if *value { Some(key) } else { None }) {
-            Some(known) => { ret.insert(*known); },
-            None => {
-                for ch in VALID_CHAR_STR.as_bytes().iter() {
-                    let info: Option<&NerdleCharInfo> = data.char_info.get(&ch);
-                    let known_ch_count = known_pos.get(ch).unwrap_or(&0);
-                    let max_ch_count = info.map(|x| x.max_count).unwrap_or(NERDLE_CHARACTERS);
-                    if known_ch_count >= &max_ch_count {
-                        continue;
-                    }
-                    let char_pos_info = info.map(|x| &x.positions[pos]).unwrap_or(&NerdleIsChar::Maybe);
-                    // println!("  ch {} pos {} known {} info {}", *ch as char, pos, known, info);         
-                    if match char_pos_info {
-                        NerdleIsChar::Definitely => true, // Should never happen
-                        NerdleIsChar::DefinitelyNot => false,
-                        NerdleIsChar::Maybe => match *ch as char {
-                            '=' => data.equal_pos == None,
-                            '+' | '-' | '*' | '/' => true,
-                            '0'..='9' => true,
-                            _ => panic!("Unexpected character '{}'", *ch)
-                        }
-                    } {
-                        ret.insert(*ch);
-                    }
-                };
-            }
-        }
-
-        ret
-    }
-
     fn possibilities_for_pos(&self, pos: usize) -> HashSet<u8> {
-        NerdleSolver::possibilities_for_pos_data(&self.data.borrow(), pos)
+        self.data.borrow().possibilities_for_pos(pos)
     }
 
     fn constraint_for_digits_start_end(&self, start: usize, end: usize, min: bool, allow_zero: bool, name: &str) -> ExpressionNumberConstraint {
@@ -473,7 +357,7 @@ impl fmt::Display for NerdleSolver {
 
         write!(f, "Equal sign at: {}\n", data.equal_pos.map(|x| x.to_string()).unwrap_or("?".to_string()))?;
 
-        for ch in VALID_CHAR_STR.as_bytes().iter() {
+        for ch in NERDLE_VALID_CHAR_BYTES.iter() {
             write!(f, "Character {}: {}\n", *ch as char, data.char_info.get(ch).unwrap_or(&NerdleCharInfo::new()))?;
         }
 
